@@ -13,7 +13,6 @@ let curPriceStr = '0.009';
 let curPriceNum = 0.009;
 let activeIds = []; 
 let currentPollingId = null; 
-let isFetchingStatus = false;
 let taskOrders = {}; 
 let KURS_IDR = 17889;
 let isDropdownOpen = false;
@@ -313,7 +312,6 @@ const DIAL_MAP = {
     '998': { name: 'Uzbekistan', iso: 'uz' }
 };
 
-// DAFTAR OPERATOR RESMI INDONESIA
 const indoOperators = [
     { label: 'Any', slug: '', icon: 'fa-solid fa-chart-simple', type: 'any' },
     { label: 'Telkomsel', slug: 'telkomsel', file: 'telkomsel.png', type: 'logo', initial: 'T', col: 'bg-red-600' },
@@ -1589,26 +1587,33 @@ setInterval(() => {
     }
 }, 1000);
 
-// POLLING STATUS DENGAN ENDPOINT TYPE 3 BEARER
+// -------------------------------------------------------------
+// POLLING FAIL-SAFE ANTI-FREEZE & MULTI-SMS RECEIVER
+// -------------------------------------------------------------
 setInterval(() => {
     let orderKeys = Object.keys(taskOrders);
     if (orderKeys.length > 0) {
         TaskSmsBridge.fetchWorkerData();
+        
         let hasWealthOrder = false;
-        for(let k in taskOrders) { if(taskOrders[k].provider === 'wealthora') hasWealthOrder = true; }
+        for(let k in taskOrders) { 
+            if(taskOrders[k].provider === 'wealthora') hasWealthOrder = true; 
+        }
         if (hasWealthOrder) {
             TaskSmsBridge.getWealthSuccessOtp();
             TaskSmsBridge.getWealthConsole();
         }
-        if (activeIds.length > 0 && !isFetchingStatus) {
+
+        // POLLING ANTI-MACET: Ambil giliran ID pesanan berikutnya
+        if (activeIds.length > 0) {
             currentPollingId = activeIds.shift();
             activeIds.push(currentPollingId);
-            if(taskOrders[currentPollingId]) {
-                if (taskOrders[currentPollingId].provider === 'vak') {
-                    isFetchingStatus = true;
-                    TaskSmsBridge.checkVakOrder(currentPollingId);
-                    TaskSmsBridge.getVakSmsInbox(currentPollingId);
-                }
+
+            let curOrd = taskOrders[currentPollingId];
+            if (curOrd && curOrd.provider === 'vak') {
+                // Tembak secara simultan: Classic API & Type 3 REST
+                TaskSmsBridge.getSmsCode(currentPollingId);
+                TaskSmsBridge.checkVakOrder(currentPollingId);
             }
         }
     }
@@ -1634,9 +1639,33 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
-// PARSER TYPE 3: MEMBACA ARRAY d.sms DARI /user/check/{id}
+// HANDLER VAK-SMS CLASSIC (MENANGKAP SMS KE-1, 2, 3 STRING MAUPUN ARRAY)
+function onGetSmsCodeResult(res) {
+    let id = currentPollingId; if (!id) return;
+    try {
+        let d = JSON.parse(res);
+        if (d && (d.smsCode !== undefined && d.smsCode !== null)) {
+            let raw = d.smsCode;
+            let code = '';
+            
+            // Jika VAK mengembalikan array dari beberapa SMS yang pernah masuk
+            if (Array.isArray(raw) && raw.length > 0) {
+                code = String(raw[raw.length - 1]).trim();
+            } else if (typeof raw === 'string' || typeof raw === 'number') {
+                code = String(raw).trim();
+            }
+
+            if (code && code !== 'null' && code !== '----') {
+                let realText = d.smsText || d.text || ('OTP: ' + code);
+                applyReceivedSms(id, code, realText);
+            }
+        }
+    } catch(e) {}
+}
+
+// HANDLER VAK-SMS TYPE 3 /user/check/{id}
 function onVakCheckResult(id, base64Res) {
-    isFetchingStatus = false;
+    if (!id || !base64Res) return;
     try {
         let jsonStr = decodeURIComponent(escape(atob(base64Res)));
         let d = JSON.parse(jsonStr);
@@ -1658,34 +1687,7 @@ function onVakCheckResult(id, base64Res) {
                 if (match) code = match[0];
             }
 
-            if (code) {
-                applyReceivedSms(id, code, text);
-            }
-        }
-    } catch(e) {}
-}
-
-// HANDLER INBOX /user/sms/inbox/{id}
-function onVakInboxResult(id, base64Res) {
-    isFetchingStatus = false;
-    try {
-        let jsonStr = decodeURIComponent(escape(atob(base64Res)));
-        let d = JSON.parse(jsonStr);
-        let list = [];
-        if (Array.isArray(d)) list = d;
-        else if (d.sms && Array.isArray(d.sms)) list = d.sms;
-        else if (d.data && Array.isArray(d.data)) list = d.data;
-        else if (d.inbox && Array.isArray(d.inbox)) list = d.inbox;
-
-        if (list.length > 0) {
-            let lastItem = list[list.length - 1];
-            let code = String(lastItem.code || lastItem.otp || '').trim();
-            let text = lastItem.text || lastItem.sms || lastItem.message || ('OTP: ' + code);
-            if (!code && text) {
-                let match = text.match(/\b\d{4,8}\b/);
-                if (match) code = match[0];
-            }
-            if (code) {
+            if (code && code !== 'null' && code !== '----') {
                 applyReceivedSms(id, code, text);
             }
         }
@@ -1722,11 +1724,15 @@ function onWealthSuccessOtpResult(res) {
     } catch(e) {}
 }
 
-// LOGIKA UTAMA: MULTI SMS DENGAN MENJAGA KODE SEBELUMNYA TETAP MUNCUL
+// -------------------------------------------------------------
+// LOGIKA UTAMA: TERIMA SMS, GANTI TAMPILAN, DAN AUTO "MORE SMS"
+// -------------------------------------------------------------
 function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
     let ord = taskOrders[id]; if (!ord) return;
 
+    // HANYA EKSEKUSI JIKA KODE BARU BERBEDA DENGAN KODE YANG TERAKHIR TAMPIL
+    // (Selama menunggu SMS ke-2/3/4, kode sebelumnya TETAP UTUH DI LAYAR!)
     if (ord.otp !== code) {
         let isNextSms = (ord.otp !== null && ord.otp !== undefined && ord.otp !== '' && ord.otp !== code);
         ord.smsCount = (ord.smsCount || 0) + 1;
@@ -1739,6 +1745,7 @@ function applyReceivedSms(id, code, fullText) {
         let badge = document.getElementById('badge_' + id);
         let copyBtn = document.getElementById('copy_otp_btn_' + id);
 
+        // Perbarui tampilan ke kode dan teks SMS yang baru masuk
         if (otpBox) otpBox.innerText = code;
         if (smsTextBox) smsTextBox.innerText = fullText;
         if (badge) { 
@@ -1757,10 +1764,11 @@ function applyReceivedSms(id, code, fullText) {
         saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, fullText);
         TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
+        // AUTO-MINTA SMS BERIKUTNYA KE SERVER VAK-SMS (UNTUK SMS KE-3, 4, 5, DST TANPA HENTI)
         if (ord.provider === 'vak') {
             setTimeout(() => { 
                 TaskSmsBridge.setStatus(id, 'send'); 
-            }, 1800);
+            }, 1500);
         }
     }
 }
@@ -1851,7 +1859,6 @@ function selectCountryId() {
 
     document.getElementById('selDropdownFlag').innerHTML = getFlagImgHtml('id', 'Indonesia', 20);
     document.getElementById('selDropdownTitle').innerHTML = 'Indonesia <span class="text-[10px] text-slate-400 font-mono">(+62)</span>';
-    // NAMA SERVER DISAMARKAN SECARA PROFESIONAL
     document.getElementById('selDropdownSub').innerText = 'Server Premium • Fast Active';
     document.getElementById('selDropdownBadge').innerText = 'Ready';
     document.getElementById('selDropdownBadge').className = 'text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded';
@@ -1884,7 +1891,6 @@ function selectLiveCountry(code) {
 
     document.getElementById('selDropdownFlag').innerHTML = getFlagImgHtml(item.iso, item.name, 20);
     document.getElementById('selDropdownTitle').innerHTML = `${item.name} <span class="text-[10px] text-slate-400 font-mono">(+${code})</span>`;
-    // DISAMARKAN MENJADI SERVER GLOBAL
     document.getElementById('selDropdownSub').innerText = 'Server Global • Cloud Pool';
     document.getElementById('selDropdownBadge').innerText = 'Free';
     document.getElementById('selDropdownBadge').className = 'text-[9px] font-mono font-bold text-cyan-400 bg-cyan-950/80 border border-cyan-500/30 px-2 py-0.5 rounded';
@@ -2096,7 +2102,6 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
     let isVak = (prov === 'vak');
     let banBtnHtml = isVak ? `<button id="ban_btn_${id}" onclick="banOrder('${id}')" class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold py-2 rounded-xl active:scale-95 transition-all"><i class="fa-solid fa-ban mr-1"></i> Ban (Bekas)</button>` : '';
 
-    // BADGE VAK DIGANTI MENJADI 'VIP' SUPAYA MEMBER TIDAK TAHU NAMA SERVER ASLI
     let html = `<div id="order_${id}" class="bg-[#0A101D] p-4 rounded-2xl mb-4 border border-slate-800 shadow-2xl relative">
         <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-2">
