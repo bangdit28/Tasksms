@@ -1,0 +1,145 @@
+body { 
+    background: #070B14; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+    color: #F1F5F9; 
+    margin: 0; 
+    padding: 14px; 
+    transition: background-color 0.3s, color 0.3s; 
+}
+
+.glass-card { 
+    background: #0D1424; 
+    border: 1px solid rgba(255,255,255,0.06); 
+    border-radius: 16px; 
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.6); 
+}
+
+.glow-btn { 
+    background: linear-gradient(135deg, #1877F2 0%, #06B6D4 100%); 
+    transition: all 0.2s ease; 
+}
+
+.glow-btn:active { 
+    transform: scale(0.97); 
+    opacity: 0.9; 
+}
+
+.auth-input { 
+    width: 100%; 
+    padding: 12px; 
+    border-radius: 10px; 
+    background: #0B101D; 
+    border: 1px solid #1E293B; 
+    color: white; 
+    outline: none; 
+    margin-bottom: 12px; 
+    font-size: 13px; 
+}
+
+.auth-input:focus { 
+    border-color: #1877F2; 
+}
+
+.custom-scrollbar::-webkit-scrollbar { 
+    width: 3px; 
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background: #334155; 
+    border-radius: 4px; 
+}
+
+.country-option { 
+    transition: all 0.15s ease; 
+    cursor: pointer; 
+}
+
+.country-option:active { 
+    transform: scale(0.98); 
+}
+
+.country-option.active { 
+    border-color: #06B6D4; 
+    background: rgba(6,182,212,0.12); 
+}
+
+.op-pill { 
+    background: #0A101D; 
+    border: 1px solid #1E293B; 
+    border-radius: 10px; 
+    height: 32px; 
+    padding: 0 12px; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 6px; 
+    cursor: pointer; 
+    transition: all 0.2s; 
+    white-space: nowrap; 
+    flex-shrink: 0; 
+}
+
+.op-pill:active { 
+    transform: scale(0.96); 
+}
+
+.op-pill.active { 
+    border-color: #06B6D4; 
+    box-shadow: 0 0 10px rgba(6,182,212,0.3); 
+    background: rgba(6,182,212,0.08); 
+}
+
+/* THEME TERANG / SIANG */
+body.theme-light {
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+}
+
+body.theme-light .glass-card,
+body.theme-light #countryDropdownTrigger,
+body.theme-light #countryDropdownMenu,
+body.theme-light .op-pill,
+body.theme-light .bg-\[\#0D1424\],
+body.theme-light .bg-\[\#0A101D\],
+body.theme-light .bg-\[\#0B101D\] {
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+    color: #0F172A !important;
+    box-shadow: 0 4px 20px -2px rgba(0,0,0,0.06) !important;
+}
+
+body.theme-light .text-white { 
+    color: #0F172A !important; 
+}
+
+body.theme-light .text-slate-200,
+body.theme-light .text-slate-300 { 
+    color: #1E293B !important; 
+}
+
+body.theme-light .text-slate-400,
+body.theme-light .text-slate-500 { 
+    color: #64748B !important; 
+}
+
+body.theme-light .bg-slate-900,
+body.theme-light .bg-slate-900\/90,
+body.theme-light .bg-slate-900\/80,
+body.theme-light .bg-slate-900\/70,
+body.theme-light .bg-slate-900\/60,
+body.theme-light .bg-slate-950\/60,
+body.theme-light .bg-slate-950\/50 {
+    background: #F1F5F9 !important;
+    border-color: #E2E8F0 !important;
+}
+
+body.theme-light #bottomNavBar {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-top-color: #E2E8F0 !important;
+}
+
+body.theme-light .auth-input {
+    background: #FFFFFF !important;
+    border-color: #CBD5E1 !important;
+    color: #0F172A !important;
+}
