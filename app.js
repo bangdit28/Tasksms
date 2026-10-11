@@ -199,16 +199,30 @@ function switchBottomTab(tab) {
     }
 }
 
-// TOGGLE MATA UANG SALDO (USD ⇄ IDR)
+// TOGGLE MATA UANG SALDO & RECENT ACTIVITY (USD ⇄ IDR/KOIN)
 function toggleBalanceCurrency() {
     balanceCurrencyMode = (balanceCurrencyMode === 'USD') ? 'IDR' : 'USD';
     TaskSmsBridge.saveUserPref('balance_currency_mode', balanceCurrencyMode);
+    
+    // 1. Update Saldo Utama di Dompet & Profil
     updateAllBalanceUI(lastServerBalanceUsd);
+    
+    // 2. Update Daftar Recent Activity di Dompet
+    let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
+    renderDompetRecentActivity(hist);
+    
+    // 3. Update Daftar di Halaman Transactions jika sedang terbuka
+    let txView = document.getElementById('subview_transactions');
+    if (txView && txView.style.display !== 'none') {
+        filterTransactionsView(currentTxFilter);
+    }
+
     try { navigator.vibrate(35); } catch(e) {}
 }
 
 function updateAllBalanceUI(val) {
-    let rpStr = formatRupiahOnly(val);
+    let rpVal = Math.round(val * KURS_IDR);
+    let rpStr = 'Rp ' + rpVal.toLocaleString('id-ID');
     let usdStr = '$' + val.toFixed(3);
     
     let dompetBal = document.getElementById('dompetTotalBalanceTxt');
@@ -234,6 +248,9 @@ function onGetMasterBalanceResult(res) {
         let val = parseFloat(d.balance !== undefined ? d.balance : d) || 0;
         lastServerBalanceUsd = val;
         updateAllBalanceUI(val);
+        
+        let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
+        renderDompetRecentActivity(hist);
     } catch(e) {}
 }
 
@@ -334,7 +351,6 @@ function renderDepositHistory() {
 
     let depHist = JSON.parse(TaskSmsBridge.getUserPref('deposit_history', '[]'));
     if (depHist.length === 0) {
-        // Tampilan default persis seperti video
         container.innerHTML = `
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -399,7 +415,7 @@ function renderDepositHistory() {
 }
 
 // -------------------------------------------------------------
-// RENDER DOMPET UTAMA (RECENT ACTIVITY PERSIS SEPERTI VIDEO)
+// RENDER DOMPET UTAMA (RECENT ACTIVITY DENGAN KURS DINAMIS)
 // -------------------------------------------------------------
 function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
@@ -430,44 +446,51 @@ function buildMockTransactionItems(hist) {
         let runningBal = 6328;
         hist.forEach((h, idx) => {
             let isRefund = (idx % 4 === 3);
-            let cost = Math.max(158, Math.round((parseFloat(h.price || 0.009)) * KURS_IDR));
+            let p = parseFloat(h.price || 0.009);
+            let costCoin = Math.max(158, Math.round(p * KURS_IDR));
+            let costUsd = p.toFixed(3);
+
             if (isRefund) {
-                runningBal += cost;
+                runningBal += costCoin;
                 items.push({
                     type: 'refund',
                     title: 'Order refund',
                     sub: 'Order canceled — refund',
                     date: h.date || '04 Oct 2026, 19:37',
-                    amount: '+' + cost,
-                    balance: runningBal.toLocaleString('id-ID')
+                    coinCost: costCoin.toLocaleString('id-ID'),
+                    usdCost: costUsd,
+                    coinBalance: runningBal.toLocaleString('id-ID'),
+                    usdBalance: (runningBal / KURS_IDR).toFixed(3)
                 });
             } else {
-                runningBal -= cost;
+                runningBal -= costCoin;
                 items.push({
                     type: 'debit',
                     title: 'Order debit',
                     sub: 'Order payment',
                     date: h.date || '06 Oct 2026, 17:55',
-                    amount: '-' + cost,
-                    balance: runningBal.toLocaleString('id-ID')
+                    coinCost: costCoin.toLocaleString('id-ID'),
+                    usdCost: costUsd,
+                    coinBalance: runningBal.toLocaleString('id-ID'),
+                    usdBalance: (runningBal / KURS_IDR).toFixed(3)
                 });
             }
         });
     }
 
-    // Default mock items jika history masih sedikit (agar persis rekaman video)
+    // Default mock items jika history belum ada / masih sedikit
     if (items.length < 5) {
         items = [
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 17:55', amount: '-431', balance: '6,328' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:18', amount: '-431', balance: '6,759' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:15', amount: '-431', balance: '7,190' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:12', amount: '-431', balance: '7,621' },
-            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '04 Oct 2026, 19:37', amount: '+158', balance: '8,052' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '04 Oct 2026, 19:12', amount: '-158', balance: '7,894' },
-            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '02 Oct 2026, 19:27', amount: '+433', balance: '8,052' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:21', amount: '-433', balance: '7,619' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:21', amount: '-433', balance: '8,052' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:18', amount: '-433', balance: '8,485' }
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 17:55', coinCost: '431', usdCost: '0.024', coinBalance: '6,328', usdBalance: '0.354' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:18', coinCost: '431', usdCost: '0.024', coinBalance: '6,759', usdBalance: '0.378' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:15', coinCost: '431', usdCost: '0.024', coinBalance: '7,190', usdBalance: '0.402' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:12', coinCost: '431', usdCost: '0.024', coinBalance: '7,621', usdBalance: '0.426' },
+            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '04 Oct 2026, 19:37', coinCost: '158', usdCost: '0.009', coinBalance: '8,052', usdBalance: '0.450' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '04 Oct 2026, 19:12', coinCost: '158', usdCost: '0.009', coinBalance: '7,894', usdBalance: '0.441' },
+            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '02 Oct 2026, 19:27', coinCost: '433', usdCost: '0.024', coinBalance: '8,052', usdBalance: '0.450' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:21', coinCost: '433', usdCost: '0.024', coinBalance: '7,619', usdBalance: '0.426' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:21', coinCost: '433', usdCost: '0.024', coinBalance: '8,052', usdBalance: '0.450' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:18', coinCost: '433', usdCost: '0.024', coinBalance: '8,485', usdBalance: '0.474' }
         ];
     }
     return items;
@@ -480,6 +503,19 @@ function renderTransactionCardHtml(it) {
         : `<div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0"><i class="fa-solid fa-arrow-up-right"></i></div>`;
     
     let amtColor = isCredit ? 'text-emerald-400' : 'text-rose-400';
+    let sign = isCredit ? '+' : '-';
+
+    // Format nominal debit & refund menyesuaikan mata uang yang dipilih
+    let displayAmount = '';
+    let displayBalance = '';
+
+    if (balanceCurrencyMode === 'USD') {
+        displayAmount = `${sign}$${it.usdCost}`;
+        displayBalance = `$${it.usdBalance}`;
+    } else {
+        displayAmount = `<span class="text-amber-300">🪙</span> ${sign}${it.coinCost}`;
+        displayBalance = `<span class="text-amber-300">🪙</span> ${it.coinBalance}`;
+    }
 
     return `
         <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 shadow-sm space-y-2.5">
@@ -492,7 +528,7 @@ function renderTransactionCardHtml(it) {
                     </div>
                 </div>
                 <div class="font-mono font-bold text-xs ${amtColor}">
-                    <span class="text-amber-300">🪙</span> ${it.amount}
+                    ${displayAmount}
                 </div>
             </div>
             
@@ -504,8 +540,7 @@ function renderTransactionCardHtml(it) {
                 <div class="flex items-center gap-1.5 font-mono">
                     <i class="fa-solid fa-wallet text-[10px]"></i>
                     <span>Balance</span>
-                    <span class="text-amber-300">🪙</span>
-                    <span class="text-white font-bold">${it.balance}</span>
+                    <span class="text-white font-bold">${displayBalance}</span>
                 </div>
             </div>
         </div>
