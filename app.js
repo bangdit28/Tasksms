@@ -1588,7 +1588,7 @@ setInterval(() => {
 }, 1000);
 
 // -------------------------------------------------------------
-// POLLING FAIL-SAFE & PENARIKAN SMS INBOX LENGKAP
+// POLLING FAIL-SAFE & PENARIKAN SMS INBOX LENGKAP (ANTI-FLICKER)
 // -------------------------------------------------------------
 setInterval(() => {
     let orderKeys = Object.keys(taskOrders);
@@ -1610,9 +1610,11 @@ setInterval(() => {
 
             let curOrd = taskOrders[currentPollingId];
             if (curOrd && curOrd.provider === 'vak') {
-                // 1. Ambil SMS code cepat
-                TaskSmsBridge.getSmsCode(currentPollingId);
-                // 2. Ambil Full Text Inbox dari /user/sms/inbox/{id}
+                // 1. Fallback cepat HANYA jika SMS pertama belum pernah didapat sama sekali
+                if (!curOrd.otp) {
+                    TaskSmsBridge.getSmsCode(currentPollingId);
+                }
+                // 2. Ambil Full Text Inbox dari /user/sms/inbox/{id} (sumber utama & akurat)
                 TaskSmsBridge.getVakSmsInbox(currentPollingId);
                 // 3. Cek Status Order Type 3
                 TaskSmsBridge.checkVakOrder(currentPollingId);
@@ -1658,7 +1660,6 @@ function onGetSmsCodeResult(res) {
             }
 
             if (code && code !== 'null' && code !== '----') {
-                // Gunakan teks jika ada, jika belum ada biarkan applyReceivedSms membuat kalimat awal sambil menunggu inbox
                 let realText = d.smsText || d.text || '';
                 applyReceivedSms(id, code, realText);
             }
@@ -1699,7 +1700,6 @@ function onVakInboxResult(id, base64Res) {
             }
 
             if (code || fullText) {
-                // Pasang langsung full text asli dari inbox server
                 applyFullInboxMessage(id, code, fullText);
             }
         }
@@ -1773,12 +1773,18 @@ function onWealthSuccessOtpResult(res) {
 function applyFullInboxMessage(id, code, fullText) {
     let ord = taskOrders[id]; if (!ord) return;
 
-    if (code && ord.otp !== code) {
+    if (!ord.receivedOtps) {
+        ord.receivedOtps = [];
+        if (ord.otp) ord.receivedOtps.push(ord.otp);
+    }
+
+    // Jika ini kode baru dan belum pernah dicatat:
+    if (code && !ord.receivedOtps.includes(code)) {
         applyReceivedSms(id, code, fullText);
         return;
     }
 
-    // Jika kode sudah sama tetapi teks lengkap baru tiba dari inbox: perbarui baris teksnya langsung!
+    // Jika kode sudah sama/sudah pernah ada, tapi ada full text baru: update isi teksnya
     if (fullText && fullText.trim() !== '' && ord.smsText !== fullText) {
         ord.smsText = fullText;
         persistOrders();
@@ -1786,7 +1792,6 @@ function applyFullInboxMessage(id, code, fullText) {
         let smsTextBox = document.getElementById('smsText_' + id);
         if (smsTextBox) smsTextBox.innerText = fullText;
 
-        // Perbarui riwayat
         let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
         let ex = hist.find(h => h.id === id || h.num === ord.num);
         if (ex) {
@@ -1803,51 +1808,67 @@ function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
     let ord = taskOrders[id]; if (!ord) return;
 
-    // Pastikan jika fullText kosong, buat format pesan konfirmasi alami
+    if (!ord.receivedOtps) {
+        ord.receivedOtps = [];
+        if (ord.otp) ord.receivedOtps.push(ord.otp);
+    }
+
+    // CEGAH BUG BOLAK-BALIK:
+    // Jika kode ini SUDAH PERNAH diterima sebelumnya:
+    if (ord.receivedOtps.includes(code)) {
+        // Cek jika teks lengkapnya baru masuk dan perlu diperbarui
+        if (fullText && fullText.trim() !== '' && ord.smsText !== fullText && !fullText.startsWith('OTP:')) {
+            ord.smsText = fullText;
+            persistOrders();
+            let smsTextBox = document.getElementById('smsText_' + id);
+            if (smsTextBox) smsTextBox.innerText = fullText;
+        }
+        return; 
+    }
+
+    // Ini kode yang BENAR-BENAR BARU
+    ord.receivedOtps.push(code);
+    ord.smsCount = ord.receivedOtps.length;
+    let isNextSms = ord.receivedOtps.length > 1;
+
     let displayMsg = fullText;
     if (!displayMsg || displayMsg.trim() === '' || displayMsg === ('OTP: ' + code)) {
         displayMsg = code + ' adalah kode konfirmasi ' + (ord.svc || 'Facebook') + ' Anda';
     }
 
-    // HANYA EKSEKUSI JIKA KODE BARU BERBEDA DENGAN KODE YANG TERAKHIR TAMPIL
-    // (Selama menunggu SMS ke-2/3/4, kode sebelumnya TETAP UTUH DI LAYAR!)
-    if (ord.otp !== code) {
-        let isNextSms = (ord.otp !== null && ord.otp !== undefined && ord.otp !== '' && ord.otp !== code);
-        ord.smsCount = (ord.smsCount || 0) + 1;
-        ord.otp = code;
-        ord.smsText = displayMsg;
-        persistOrders();
+    ord.otp = code;
+    ord.smsText = displayMsg;
+    persistOrders();
 
-        let otpBox = document.getElementById('otp_' + id);
-        let smsTextBox = document.getElementById('smsText_' + id);
-        let badge = document.getElementById('badge_' + id);
-        let copyBtn = document.getElementById('copy_otp_btn_' + id);
+    let otpBox = document.getElementById('otp_' + id);
+    let smsTextBox = document.getElementById('smsText_' + id);
+    let badge = document.getElementById('badge_' + id);
+    let copyBtn = document.getElementById('copy_otp_btn_' + id);
 
-        // Perbarui tampilan ke kode dan teks SMS yang baru masuk
-        if (otpBox) otpBox.innerText = code;
-        if (smsTextBox) smsTextBox.innerText = displayMsg;
-        if (badge) { 
-            badge.innerText = isNextSms ? ('OTP #' + ord.smsCount + ' RECEIVED') : 'OTP RECEIVED'; 
-            badge.className = 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 text-[9px] font-black px-2 py-0.5 rounded'; 
-        }
-        if (copyBtn) copyBtn.classList.remove('opacity-30');
-        let btnF = document.getElementById('btnFinish_' + id); if (btnF) btnF.style.display = 'block';
+    // Perbarui tampilan ke kode dan teks SMS yang baru masuk
+    if (otpBox) otpBox.innerText = code;
+    if (smsTextBox) smsTextBox.innerText = displayMsg;
+    if (badge) { 
+        badge.innerText = isNextSms ? ('OTP #' + ord.smsCount + ' RECEIVED') : 'OTP RECEIVED'; 
+        badge.className = 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 text-[9px] font-black px-2 py-0.5 rounded'; 
+    }
+    if (copyBtn) copyBtn.classList.remove('opacity-30');
+    let btnF = document.getElementById('btnFinish_' + id); if (btnF) btnF.style.display = 'block';
 
-        TaskSmsBridge.copyToClipboard(code, 'Kode OTP');
-        try { navigator.vibrate([150, 80, 150]); } catch(e){}
-        try { TaskSmsBridge.showOtpNotification(code, displayMsg); } catch(e){}
+    TaskSmsBridge.copyToClipboard(code, 'Kode OTP');
+    try { navigator.vibrate([150, 80, 150]); } catch(e){}
+    try { TaskSmsBridge.showOtpNotification(code, displayMsg); } catch(e){}
 
-        pushNewNotification('Facebook — OTP Received', 'Order #' + id + ' (' + (ord.ctry || 'Indonesia') + ') : ' + code, id);
+    pushNewNotification('Facebook — OTP Received', 'Order #' + id + ' (' + (ord.ctry || 'Indonesia') + ') : ' + code, id);
 
-        saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, displayMsg);
-        TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
+    saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, displayMsg);
+    TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
-        // AUTO-MINTA SMS BERIKUTNYA KE SERVER VAK-SMS (UNTUK SMS KE-3, 4, 5, DST TANPA HENTI)
-        if (ord.provider === 'vak') {
-            setTimeout(() => { 
-                TaskSmsBridge.setStatus(id, 'send'); 
-            }, 1500);
-        }
+    // AUTO-MINTA SMS BERIKUTNYA KE SERVER VAK-SMS (UNTUK SMS KE-3, 4, 5, DST TANPA HENTI)
+    if (ord.provider === 'vak') {
+        setTimeout(() => { 
+            TaskSmsBridge.setStatus(id, 'send'); 
+        }, 1500);
     }
 }
 
@@ -1862,6 +1883,9 @@ function restoreOrdersFromStorage() {
         let now = Date.now();
         for (let id in taskOrders) {
             let o = taskOrders[id];
+            if (!o.receivedOtps) {
+                o.receivedOtps = o.otp ? [o.otp] : [];
+            }
             let elapsed = Math.floor((now - o.created) / 1000);
             if (elapsed < 1200 || o.otp) {
                 renderOrderCardUI(o.id, o.num, o.price, o.opTag, o.otp, o.smsText, o.timeStr, false, o.provider);
@@ -2109,7 +2133,8 @@ function onGetNumberResult(res) {
                 otp: null,
                 smsText: 'Menunggu SMS masuk dari server...',
                 provider: 'vak',
-                smsCount: 0
+                smsCount: 0,
+                receivedOtps: []
             };
             persistOrders();
             renderOrderCardUI(d.idNum, d.tel, curPriceNum, selectedOperatorLabel.toUpperCase(), null, 'Menunggu SMS masuk dari server...', timeStr, true, 'vak');
@@ -2160,7 +2185,8 @@ function onWealthGetNumResult(res) {
                 otp: null,
                 smsText: 'Menunggu SMS masuk dari server...',
                 provider: 'wealthora',
-                smsCount: 0
+                smsCount: 0,
+                receivedOtps: []
             };
             persistOrders();
             renderOrderCardUI(ordId, fullNum, 0, opName, null, 'Menunggu SMS masuk dari server...', timeStr, true, 'wealthora');
