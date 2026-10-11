@@ -151,16 +151,13 @@
         <div id="activeOrders"></div>
     </div>
 
-    <!-- VIEW 2: ORDERS / ORDER HISTORY (SESUAI VIDEO LENGKAP) -->
+    <!-- VIEW 2: ORDERS / ORDER HISTORY -->
     <div id="view_history" class="view-pane space-y-3.5" style="display: none;">
-        
-        <!-- SUB-PAGE: DAFTAR ORDERS -->
         <div id="ordersListView" class="space-y-3.5">
             <div class="text-center py-1">
                 <h2 class="text-base font-black text-white tracking-wide">Orders</h2>
             </div>
 
-            <!-- FILTER TABS: ALL, ACTIVE, COMPLETED, CANCELED -->
             <div class="flex bg-slate-900/90 p-1 rounded-2xl border border-slate-800 gap-1">
                 <button id="orderTabAll" onclick="filterOrdersTab('all')" class="flex-1 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white shadow">All</button>
                 <button id="orderTabActive" onclick="filterOrdersTab('active')" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white">Active</button>
@@ -168,11 +165,9 @@
                 <button id="orderTabCanceled" onclick="filterOrdersTab('canceled')" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white">Canceled</button>
             </div>
 
-            <!-- CONTAINER LIST OF ORDERS -->
             <div id="ordersListContainer" class="space-y-2.5 max-h-[70vh] overflow-y-auto custom-scrollbar pr-0.5"></div>
         </div>
 
-        <!-- SUB-PAGE: DETAIL ORDER (SAAT KARTU DIKLIK) -->
         <div id="orderDetailView" class="space-y-3.5" style="display: none;">
             <div class="flex items-center justify-between py-1">
                 <button onclick="closeOrderDetailView()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
@@ -182,7 +177,6 @@
                 <div class="w-9"></div>
             </div>
 
-            <!-- HEADER CARD SERVICE & STATUS -->
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-2xl bg-blue-600/20 text-blue-400 flex items-center justify-center text-2xl border border-blue-500/30">
@@ -200,7 +194,6 @@
                 <span id="detStatusBadge" class="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-lg">Completed</span>
             </div>
 
-            <!-- PHONE NUMBER -->
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider font-mono">PHONE NUMBER</div>
                 <div class="flex items-center justify-between mt-1">
@@ -211,7 +204,6 @@
                 </div>
             </div>
 
-            <!-- LAST DETECTED OTP -->
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider font-mono">LAST DETECTED OTP</div>
                 <div class="flex items-center justify-between mt-1">
@@ -222,7 +214,6 @@
                 </div>
             </div>
 
-            <!-- LATEST SMS -->
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider font-mono">LATEST SMS</div>
                 <div class="mt-1.5 p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs text-slate-200 font-mono leading-relaxed" id="detSmsBody">
@@ -230,7 +221,6 @@
                 </div>
             </div>
 
-            <!-- METADATA 2x2 GRID -->
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 grid grid-cols-2 gap-3 text-xs">
                 <div>
                     <div class="text-[9px] text-slate-400 font-bold uppercase font-mono">SERVICE</div>
@@ -250,7 +240,6 @@
                 </div>
             </div>
 
-            <!-- MESSAGES SECTION -->
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 space-y-2">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-white">Messages <span class="text-slate-400 font-mono" id="detMsgCount">(1)</span></span>
@@ -286,6 +275,8 @@
 
     <!-- VIEW 4: WALLET / DOMPET UTAMA -->
     <div id="view_dompet" class="view-pane space-y-4" style="display: none;">
+        
+        <!-- TOP BALANCE CARD (WALLET HEADER DINAMIS ADMIN / MEMBER) -->
         <div class="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 rounded-3xl p-5 text-white shadow-xl shadow-blue-500/15 relative overflow-hidden">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3.5">
@@ -294,23 +285,26 @@
                     </div>
                     <div>
                         <div class="text-[11px] text-blue-100 font-medium flex items-center gap-1.5">
-                            <span>Total balance</span>
-                            <i class="fa-solid fa-arrows-rotate text-[10px] cursor-pointer hover:rotate-180 transition-transform active:scale-90" onclick="TaskSmsBridge.getMasterServerBalance()" title="Segarkan Saldo"></i>
+                            <span id="dompetBalanceTitle">Saldo Koin Saya</span>
+                            <i id="dompetRefreshBtn" class="fa-solid fa-arrows-rotate text-[10px] cursor-pointer hover:rotate-180 transition-transform active:scale-90" onclick="handleRefreshSaldo()" title="Segarkan"></i>
                         </div>
                         <div class="flex items-center gap-1.5 font-black text-2xl tracking-tight mt-0.5 cursor-pointer active:scale-95 transition-transform" onclick="toggleBalanceCurrency()">
                             <span class="text-amber-300 text-lg">🪙</span>
-                            <span id="dompetTotalBalanceTxt">6,328</span>
+                            <span id="dompetTotalBalanceTxt">0</span>
                         </div>
-                        <div class="text-[10px] text-blue-100 font-mono mt-0.5 cursor-pointer" onclick="toggleBalanceCurrency()" id="dompetSubBalanceTxt">~ Rp 113.197.800</div>
+                        <div class="text-[10px] text-blue-100 font-mono mt-0.5 cursor-pointer" onclick="toggleBalanceCurrency()" id="dompetSubBalanceTxt">~ Rp 0</div>
                     </div>
                 </div>
-                <button onclick="openDepositView()" class="bg-white hover:bg-slate-100 text-blue-600 font-black text-xs px-4 py-2 rounded-full shadow-md flex items-center gap-1.5 active:scale-95 transition-all">
-                    <i class="fa-solid fa-circle-plus text-sm"></i>
-                    <span>Top up</span>
+                
+                <!-- TOMBOL ACTION: ADMIN = TRANSFER, MEMBER = TOPUP -->
+                <button id="dompetMainActionBtn" onclick="handleMainWalletAction()" class="bg-white hover:bg-slate-100 text-blue-600 font-black text-xs px-4 py-2 rounded-full shadow-md flex items-center gap-1.5 active:scale-95 transition-all">
+                    <i id="dompetMainActionIcon" class="fa-solid fa-circle-plus text-sm"></i>
+                    <span id="dompetMainActionLabel">Top up</span>
                 </button>
             </div>
 
-            <div onclick="toggleBalanceCurrency()" class="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium text-blue-100 cursor-pointer active:scale-98 transition-transform">
+            <!-- ESTIMASI KURS USD / IDR BAR (HANYA MUNCUL DI ADMIN / MODE KONVERSI) -->
+            <div id="dompetKursRow" onclick="toggleBalanceCurrency()" class="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium text-blue-100 cursor-pointer active:scale-98 transition-transform">
                 <div class="flex items-center gap-1.5">
                     <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
                     <span>Estimasi Kurs USD / IDR</span>
@@ -321,12 +315,13 @@
             </div>
         </div>
 
+        <!-- 3 ACTION BUTTONS (DEPOSIT/TRANSFER, HISTORY, TRANSACTIONS) -->
         <div class="grid grid-cols-3 gap-2.5">
-            <div onclick="openDepositView()" class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all hover:border-slate-700 shadow-lg">
-                <div class="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-base">
-                    <i class="fa-solid fa-circle-plus"></i>
+            <div onclick="handleFirstGridAction()" class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all hover:border-slate-700 shadow-lg">
+                <div id="gridFirstActionIcon" class="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-base">
+                    <i id="gridFirstActionFa" class="fa-solid fa-circle-plus"></i>
                 </div>
-                <span class="text-xs font-bold text-slate-200">Deposit</span>
+                <span id="gridFirstActionLabel" class="text-xs font-bold text-slate-200">Deposit</span>
             </div>
 
             <div onclick="switchBottomTab('history')" class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all hover:border-slate-700 shadow-lg">
@@ -344,6 +339,7 @@
             </div>
         </div>
 
+        <!-- RECENT ACTIVITY SECTION -->
         <div class="space-y-2.5">
             <div class="flex justify-between items-center px-1">
                 <div class="text-xs font-bold text-slate-200 tracking-wide">Recent activity</div>
@@ -372,7 +368,7 @@
         <div class="space-y-2.5 max-h-[65vh] overflow-y-auto custom-scrollbar pr-0.5" id="transactionsFullList"></div>
     </div>
 
-    <!-- SUBVIEW: DEPOSIT -->
+    <!-- SUBVIEW: DEPOSIT (HANYA UNTUK MEMBER) -->
     <div id="subview_deposit" class="view-pane space-y-4" style="display: none;">
         <div class="flex items-center justify-between py-1">
             <button onclick="backToWalletMain()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
@@ -466,7 +462,7 @@
                     <div>
                         <div class="flex items-center gap-1.5 font-black text-lg tracking-tight">
                             <span class="text-amber-300 text-base">🪙</span>
-                            <span id="profilCoinTxt">$0.000</span>
+                            <span id="profilCoinTxt">0</span>
                         </div>
                         <div class="text-xs text-blue-100 font-medium truncate max-w-[200px]" id="profilUsernameTxt">user@tasksms.com</div>
                     </div>
