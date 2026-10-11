@@ -8,8 +8,9 @@ let selectedCountryIso = 'id';
 let selectedOperatorSlug = ''; 
 let selectedOperatorLabel = 'ANY';
 let liveCountryMap = {};
-let curPriceStr = '0'; 
-let curPriceNum = 0;
+// HARGA DIPATENKAN LANGSUNG 0.009 USD (INSTAN TANPA LOADING LAMA)
+let curPriceStr = '0.009'; 
+let curPriceNum = 0.009;
 let activeIds = []; 
 let currentPollingId = null; 
 let isFetchingStatus = false;
@@ -151,13 +152,11 @@ function t(k) {
 function applyAppLanguage() {
     let p = LANG_PACK[currentAppLang] || LANG_PACK.id;
     
-    // Bottom Nav
     let navHome = document.getElementById('txtNavHome'); if (navHome) navHome.innerText = p.nav_home;
     let navOrders = document.getElementById('txtNavOrders'); if (navOrders) navOrders.innerText = p.nav_orders;
     let navWallet = document.getElementById('txtNavWallet'); if (navWallet) navWallet.innerText = p.nav_wallet;
     let navProfil = document.getElementById('txtNavProfil'); if (navProfil) navProfil.innerText = p.nav_profil;
 
-    // Home
     let hPref = document.getElementById('txtHomeGreetingPrefix'); if (hPref) hPref.innerText = p.greeting_prefix;
     let hSub = document.getElementById('txtHomeSubtitle'); if (hSub) hSub.innerText = p.home_sub;
     let tRef = document.getElementById('txtTapRefresh'); if (tRef) tRef.innerText = p.tap_refresh;
@@ -166,14 +165,12 @@ function applyAppLanguage() {
     let tgL = document.getElementById('txtTargetLabel'); if (tgL) tgL.innerText = p.target_label;
     let prL = document.getElementById('selPriceLabelTxt'); if (prL) prL.innerText = p.price_label;
 
-    // Orders & Notif
     let nT = document.getElementById('txtNotifPageTitle'); if (nT) nT.innerText = p.notif_title;
     let mR = document.getElementById('txtMarkAllRead'); if (mR) mR.innerText = p.mark_all_read;
     let oH = document.getElementById('txtOrdersHeaderTitle'); if (oH) oH.innerText = p.orders_title;
     let lSub = document.getElementById('txtLiveSubtitle'); if (lSub) lSub.innerText = p.live_sub;
     let wM = document.getElementById('txtWaitingMemberAct'); if (wM) wM.innerText = p.waiting_member;
 
-    // Dompet
     let rAct = document.getElementById('txtRecentActivityLabel'); if (rAct) rAct.innerText = p.recent_activity;
     let vAll = document.getElementById('txtViewAllLabel'); if (vAll) vAll.innerText = p.view_all;
     let gHist = document.getElementById('txtGridHistoryLabel'); if (gHist) gHist.innerText = p.nav_orders;
@@ -183,7 +180,6 @@ function applyAppLanguage() {
     let hDepT = document.getElementById('txtHistDepTitle'); if (hDepT) hDepT.innerText = p.hist_dep_title;
     let hDepS = document.getElementById('txtHistDepSubtitle'); if (hDepS) hDepS.innerText = p.hist_dep_sub;
 
-    // Profil Menu
     let sAcc = document.getElementById('txtSectionAccount'); if (sAcc) sAcc.innerText = p.sec_account;
     let sSet = document.getElementById('txtSectionSettings'); if (sSet) sSet.innerText = p.sec_settings;
     let mTx = document.getElementById('txtMenuTransactions'); if (mTx) mTx.innerText = p.menu_tx;
@@ -317,9 +313,15 @@ const DIAL_MAP = {
     '998': { name: 'Uzbekistan', iso: 'uz' }
 };
 
+// DAFTAR OPERATOR LENGKAP VAK-SMS INDONESIA
 const indoOperators = [
     { label: 'Any', slug: '', icon: 'fa-solid fa-chart-simple', type: 'any' },
-    { label: 'Indosat', slug: 'indosat', file: 'indosat.png', type: 'logo', initial: 'I', col: 'bg-yellow-600' }
+    { label: 'Telkomsel', slug: 'telkomsel', file: 'telkomsel.png', type: 'logo', initial: 'T', col: 'bg-red-600' },
+    { label: 'Indosat', slug: 'indosat', file: 'indosat.png', type: 'logo', initial: 'I', col: 'bg-yellow-600' },
+    { label: 'XL', slug: 'xl', file: 'xl.png', type: 'logo', initial: 'X', col: 'bg-blue-600' },
+    { label: 'Axis', slug: 'axis', file: 'axis.png', type: 'logo', initial: 'A', col: 'bg-purple-600' },
+    { label: 'Three', slug: 'three', file: 'three.png', type: 'logo', initial: '3', col: 'bg-orange-600' },
+    { label: 'Smartfren', slug: 'smartfren', file: 'smartfren.png', type: 'logo', initial: 'S', col: 'bg-rose-600' }
 ];
 
 function getFlagImgHtml(isoCode, countryName, displayHeight = 20) {
@@ -378,6 +380,12 @@ fetch('https://open.er-api.com/v6/latest/USD').then(res => res.json()).then(data
         KURS_IDR = data.rates.IDR; 
         let dKurs = document.getElementById('dompetKursTxt');
         if(dKurs) dKurs.innerText = '$1.00 ≈ ' + formatRupiahOnly(1);
+        let cPriceEl = document.getElementById('card_price_id');
+        if(cPriceEl) cPriceEl.innerText = formatRupiahOnly(curPriceNum);
+        let sProvEl = document.getElementById('selProviderBadge');
+        if(sProvEl && currentProvider === 'vak') {
+            sProvEl.innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + formatRupiahOnly(curPriceNum) + ')</span>';
+        }
     }
 }).catch(e => {});
 
@@ -606,9 +614,9 @@ function checkMemberBalanceState() {
     }
 
     let memberCoins = getMemberCoinBalance();
-    let orderCostCoins = Math.round(curPriceNum * KURS_IDR);
+    let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
 
-    if (curPriceNum > 0 && memberCoins < orderCostCoins) {
+    if (memberCoins < orderCostCoins) {
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-wallet text-xs"></i> ${t('btn_insufficient')}`;
         btn.className = 'w-full py-3 rounded-xl bg-slate-800 text-slate-500 font-bold text-xs uppercase cursor-not-allowed shadow-none';
@@ -909,8 +917,8 @@ function buildUnifiedOrdersList() {
 
     for (let id in taskOrders) {
         let to = taskOrders[id];
-        let p = parseFloat(to.price || 0);
-        let coinPrice = Math.round(p * KURS_IDR);
+        let p = parseFloat(to.price || curPriceNum);
+        let coinPrice = Math.max(161, Math.round(p * KURS_IDR));
         list.push({
             id: to.id,
             service: to.svc || 'Facebook',
@@ -929,8 +937,8 @@ function buildUnifiedOrdersList() {
 
     if (hist && hist.length > 0) {
         hist.forEach((h) => {
-            let p = parseFloat(h.price || 0);
-            let coinPrice = Math.round(p * KURS_IDR);
+            let p = parseFloat(h.price || curPriceNum);
+            let coinPrice = Math.max(161, Math.round(p * KURS_IDR));
             list.push({
                 id: h.id || '-',
                 service: h.svc || 'Facebook',
@@ -1178,8 +1186,8 @@ function buildActualTransactionItems(hist) {
 
     if (hist && hist.length > 0) {
         hist.forEach((h) => {
-            let p = parseFloat(h.price || 0);
-            let costCoin = Math.round(p * KURS_IDR);
+            let p = parseFloat(h.price || curPriceNum);
+            let costCoin = Math.max(161, Math.round(p * KURS_IDR));
             let costUsd = p.toFixed(3);
 
             items.push({
@@ -1593,9 +1601,7 @@ setInterval(() => {
             if(taskOrders[currentPollingId]) {
                 if (taskOrders[currentPollingId].provider === 'vak') {
                     isFetchingStatus = true;
-                    // Ambil teks lengkap dari endpoint /v1/user/sms/inbox/{id}
                     TaskSmsBridge.getVakSmsInbox(currentPollingId);
-                    // Backup via query cepat
                     TaskSmsBridge.getSmsCode(currentPollingId);
                 }
             }
@@ -1623,7 +1629,6 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
-// HANDLER VAK-SMS V1 FULL INBOX (BACA TEKS ASLI LENGKAP & KODE TERBARU)
 function onVakInboxResult(id, base64Res) {
     isFetchingStatus = false;
     try {
@@ -1641,7 +1646,6 @@ function onVakInboxResult(id, base64Res) {
         }
 
         if (list.length > 0) {
-            // Ambil item SMS yang paling terbaru
             let lastItem = list[list.length - 1];
             let code = String(lastItem.code || lastItem.otp || lastItem.smsCode || '').trim();
             let text = lastItem.text || lastItem.sms || lastItem.message || lastItem.body || ('OTP: ' + code);
@@ -1704,8 +1708,6 @@ function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
     let ord = taskOrders[id]; if (!ord) return;
 
-    // HANYA EKSEKUSI JIKA KODE BARU BERBEDA DENGAN KODE YANG TERAKHIR TAMPIL
-    // (Selama menunggu SMS ke-2/3/4, kode sebelumnya TETAP UTUH DI LAYAR!)
     if (ord.otp !== code) {
         let isNextSms = (ord.otp !== null && ord.otp !== undefined && ord.otp !== '' && ord.otp !== code);
         ord.smsCount = (ord.smsCount || 0) + 1;
@@ -1718,7 +1720,6 @@ function applyReceivedSms(id, code, fullText) {
         let badge = document.getElementById('badge_' + id);
         let copyBtn = document.getElementById('copy_otp_btn_' + id);
 
-        // Perbarui tampilan ke kode dan teks SMS yang baru masuk
         if (otpBox) otpBox.innerText = code;
         if (smsTextBox) smsTextBox.innerText = fullText;
         if (badge) { 
@@ -1737,7 +1738,6 @@ function applyReceivedSms(id, code, fullText) {
         saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, fullText);
         TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
-        // AUTO-MINTA SMS BERIKUTNYA KE SERVER VAK-SMS (BISA KE-2, 3, 4, BERAPA KALI PUN)
         if (ord.provider === 'vak') {
             setTimeout(() => { 
                 TaskSmsBridge.setStatus(id, 'send'); 
@@ -1841,11 +1841,12 @@ function selectCountryId() {
     document.getElementById('operatorSection').style.display = 'block';
     document.getElementById('selPriceLabelTxt').innerText = t('price_label');
     
-    if (curPriceNum > 0) {
-        document.getElementById('selProviderBadge').innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + formatRupiahOnly(curPriceNum) + ')</span>';
-    } else {
-        document.getElementById('selProviderBadge').innerText = 'Memeriksa...';
-    }
+    // TAMPILKAN HARGA PATEN SECARA INSTAN TANPA MENUNGGU
+    let pRupiah = formatRupiahOnly(curPriceNum);
+    let cPriceEl = document.getElementById('card_price_id');
+    if (cPriceEl) cPriceEl.innerText = pRupiah;
+    let sProvEl = document.getElementById('selProviderBadge');
+    if (sProvEl) sProvEl.innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + pRupiah + ')</span>';
     
     document.getElementById('selTargetTxt').innerHTML = `${getFlagImgHtml('id', 'Indonesia', 18)} <span>Indonesia</span> <span class="text-[10px] bg-slate-800 text-cyan-400 px-1.5 py-0.5 rounded border border-slate-700 uppercase font-mono">${selectedOperatorLabel}</span>`;
     queryRealtimeStockVak();
@@ -1893,10 +1894,16 @@ function onServiceFbClick() {
     TaskSmsBridge.getWealthLiveAccess();
 }
 
+// RENDER SELURUH OPERATOR VAK-SMS INDONESIA
 function renderOperatorButtons() {
     let grid = document.getElementById('operatorGrid');
     let savedOp = TaskSmsBridge.getUserPref('operator_slug', '');
     selectedOperatorSlug = savedOp;
+    
+    // Update label jumlah operator di judul
+    let opCountEl = document.getElementById('txtOperatorCount');
+    if (opCountEl) opCountEl.innerText = (indoOperators.length - 1) + ' JALUR';
+
     let html = '';
     indoOperators.forEach(op => {
         let isActive = (savedOp === op.slug) ? 'active' : '';
@@ -1939,16 +1946,6 @@ function onGetCountNumberResult(res) {
         let count = 0;
         if (typeof d === 'object') {
             count = (d.count !== undefined) ? d.count : (d['fb'] !== undefined ? d['fb'] : 0);
-            
-            if (d.price !== undefined && d.price !== null) {
-                curPriceNum = parseFloat(d.price) || 0;
-                curPriceStr = String(d.price);
-                let pRupiah = formatRupiahOnly(curPriceNum);
-                let cPriceEl = document.getElementById('card_price_id');
-                if (cPriceEl) cPriceEl.innerText = pRupiah;
-                let sProvEl = document.getElementById('selProviderBadge');
-                if (sProvEl) sProvEl.innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + pRupiah + ')</span>';
-            }
         } else { count = parseInt(d) || 0; }
 
         if (count > 0) {
@@ -1969,7 +1966,7 @@ function onGetCountNumberResult(res) {
 
 function executeOrderNow() {
     if (currentProvider === 'vak') {
-        let orderCostCoins = Math.round(curPriceNum * KURS_IDR);
+        let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
         if (!isAdminUser && getMemberCoinBalance() < orderCostCoins) {
             return alert('Saldo koin Anda tidak mencukupi (' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin). Silakan isi saldo terlebih dahulu.');
         }
@@ -2016,7 +2013,7 @@ function onGetNumberResult(res) {
             renderOrderCardUI(d.idNum, d.tel, curPriceNum, selectedOperatorLabel.toUpperCase(), null, 'Menunggu SMS masuk dari server...', timeStr, true, 'vak');
             activeIds.push(d.idNum);
             
-            let orderCostCoins = Math.round(curPriceNum * KURS_IDR);
+            let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
             deductMemberBalance(orderCostCoins);
 
             if (isAdminUser) {
@@ -2179,7 +2176,6 @@ function finishOrder(id) {
     let el = document.getElementById('order_' + id); if(el) el.remove();
 }
 
-// SIMPAN SEMUA KODE OTP YANG DIDAPAT KE RIWAYAT (PISAH DENGAN KOMA)
 function saveToTaskHistory(svc, ctry, num, code, price, id, opTag, fullText) {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let dateObj = new Date();
