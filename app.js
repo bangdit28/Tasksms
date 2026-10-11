@@ -8,8 +8,8 @@ let selectedCountryIso = 'id';
 let selectedOperatorSlug = ''; 
 let selectedOperatorLabel = 'ANY';
 let liveCountryMap = {};
-let curPriceStr = '0.009'; 
-let curPriceNum = 0.009;
+let curPriceStr = '0'; 
+let curPriceNum = 0;
 let activeIds = []; 
 let currentPollingId = null; 
 let isFetchingStatus = false;
@@ -21,6 +21,220 @@ let balanceCurrencyMode = 'USD'; // 'USD' atau 'IDR'
 let currentTxFilter = 'all';
 let currentOrderTab = 'all';
 let currentOpenedOrder = null;
+let currentAppLang = 'id'; // 'id' atau 'en'
+
+// -------------------------------------------------------------
+// SISTEM MULTI-BAHASA (INDONESIA & ENGLISH)
+// -------------------------------------------------------------
+const LANG_PACK = {
+    id: {
+        nav_home: 'Beranda',
+        nav_orders: 'Orders',
+        nav_live: 'Live',
+        nav_wallet: 'Dompet',
+        nav_profil: 'Profil',
+        greeting_prefix: 'Hai',
+        home_sub: 'Pilih nomor verifikasi Anda',
+        total_orders: 'Total Transaksi',
+        success_rate: 'Rasio Sukses',
+        tap_refresh: 'Ketuk untuk segarkan negara & stok',
+        select_country: 'PILIH NEGARA',
+        operator_title: 'OPERATOR INDONESIA',
+        target_label: 'Target Pilihan',
+        price_label: 'Harga Bersih',
+        btn_get_number: 'Ambil Nomor Facebook Sekarang',
+        btn_checking: 'Memeriksa stok...',
+        btn_insufficient: 'Saldo Koin Tidak Cukup (Isi Saldo)',
+        hist_title: 'Riwayat SMS',
+        total_spent: 'Total Transaksi Akun',
+        notif_title: 'Notifikasi',
+        mark_all_read: 'Tandai semua dibaca',
+        no_notif: 'Belum ada pemberitahuan notifikasi.',
+        orders_title: 'Daftar Pesanan',
+        no_orders: 'Belum ada riwayat pesanan.',
+        recent_activity: 'Aktivitas Terkini',
+        view_all: 'Lihat Semua',
+        my_balance: 'Saldo Koin Saya',
+        server_balance: 'Saldo Server (Admin Master)',
+        deposit_title: 'Deposit',
+        deposit_locked_title: 'Deposit Saldo Terkunci',
+        deposit_locked_desc: 'Pengisian saldo koin akun saat ini hanya dapat diproses langsung oleh Admin. Silakan hubungi admin di bawah untuk melakukan pengisian saldo:',
+        hist_dep_title: 'Riwayat Deposit',
+        hist_dep_sub: 'Otomatis dari Transfer Admin',
+        no_dep_hist: 'Belum ada riwayat deposit.',
+        sec_account: 'Akun',
+        sec_settings: 'Pengaturan',
+        menu_tx: 'Transaksi',
+        menu_wallet: 'Dompet Saldo',
+        menu_support: 'Layanan Bantuan',
+        menu_notif: 'Notifikasi',
+        menu_lang: 'Bahasa (Language)',
+        menu_theme: 'Tema Tampilan',
+        menu_push: 'Notifikasi Pop-up',
+        menu_push_desc: 'Dapatkan pemberitahuan saat OTP masuk',
+        menu_pass: 'Ganti Password',
+        menu_webhook: 'URL Webhook',
+        menu_signout_all: 'Keluar Dari Semua Sesi',
+        menu_delete_acc: 'Hapus Akun',
+        btn_signout: 'Keluar Akun',
+        live_sub: 'Aktivitas pesanan member yang berhasil mendapatkan SMS verifikasi secara real-time:',
+        waiting_member: 'Menunggu aktivitas member...',
+        admin_trf_title: 'Transfer Saldo Member',
+        admin_trf_desc: 'Kirim saldo ke member via kalkulator konversi real-time:',
+        admin_trf_btn: 'Kirim Saldo Koin Sekarang',
+        modal_lang_title: 'Pilih Bahasa / Language'
+    },
+    en: {
+        nav_home: 'Home',
+        nav_orders: 'Orders',
+        nav_live: 'Live',
+        nav_wallet: 'Wallet',
+        nav_profil: 'Profile',
+        greeting_prefix: 'Hi',
+        home_sub: "Let's get your number",
+        total_orders: 'Total Orders',
+        success_rate: 'Success Rate',
+        tap_refresh: 'Tap to refresh stock & country',
+        select_country: 'SELECT COUNTRY',
+        operator_title: 'INDONESIAN CARRIERS',
+        target_label: 'Selected Target',
+        price_label: 'Net Price',
+        btn_get_number: 'Get Facebook Number Now',
+        btn_checking: 'Checking stock...',
+        btn_insufficient: 'Insufficient Balance (Top up)',
+        hist_title: 'SMS History',
+        total_spent: 'Total Account Spending',
+        notif_title: 'Notifications',
+        mark_all_read: 'Mark all read',
+        no_notif: 'No notifications yet.',
+        orders_title: 'Orders',
+        no_orders: 'No orders recorded yet.',
+        recent_activity: 'Recent activity',
+        view_all: 'View all',
+        my_balance: 'My Coin Balance',
+        server_balance: 'Server Balance (Admin Master)',
+        deposit_title: 'Deposit',
+        deposit_locked_title: 'Deposit Locked',
+        deposit_locked_desc: 'Coin top-up is processed directly by Admin. Please reach out to our admin contact below:',
+        hist_dep_title: 'Deposit History',
+        hist_dep_sub: 'Direct Admin Transfers',
+        no_dep_hist: 'No deposit history recorded yet.',
+        sec_account: 'Account',
+        sec_settings: 'Settings',
+        menu_tx: 'Transactions',
+        menu_wallet: 'Wallet',
+        menu_support: 'Support',
+        menu_notif: 'Notifications',
+        menu_lang: 'Language',
+        menu_theme: 'Theme',
+        menu_push: 'Push notifications',
+        menu_push_desc: 'Get instant alerts when OTP arrives',
+        menu_pass: 'Set password',
+        menu_webhook: 'Webhook Endpoint',
+        menu_signout_all: 'Sign out everywhere',
+        menu_delete_acc: 'Delete Account',
+        btn_signout: 'Sign out',
+        live_sub: 'Real-time verified SMS alerts across registered members:',
+        waiting_member: 'Waiting for live member activity...',
+        admin_trf_title: 'Transfer Member Balance',
+        admin_trf_desc: 'Send coins to member with real-time conversion calculator:',
+        admin_trf_btn: 'Transfer Coins Now',
+        modal_lang_title: 'Select Language'
+    }
+};
+
+function t(k) {
+    let pack = LANG_PACK[currentAppLang] || LANG_PACK.id;
+    return pack[k] || k;
+}
+
+function applyAppLanguage() {
+    let p = LANG_PACK[currentAppLang] || LANG_PACK.id;
+    
+    // Bottom Nav
+    let navHome = document.getElementById('txtNavHome'); if (navHome) navHome.innerText = p.nav_home;
+    let navOrders = document.getElementById('txtNavOrders'); if (navOrders) navOrders.innerText = p.nav_orders;
+    let navWallet = document.getElementById('txtNavWallet'); if (navWallet) navWallet.innerText = p.nav_wallet;
+    let navProfil = document.getElementById('txtNavProfil'); if (navProfil) navProfil.innerText = p.nav_profil;
+
+    // Home
+    let hPref = document.getElementById('txtHomeGreetingPrefix'); if (hPref) hPref.innerText = p.greeting_prefix;
+    let hSub = document.getElementById('txtHomeSubtitle'); if (hSub) hSub.innerText = p.home_sub;
+    let tRef = document.getElementById('txtTapRefresh'); if (tRef) tRef.innerText = p.tap_refresh;
+    let sCtry = document.getElementById('txtSelectCountryLabel'); if (sCtry) sCtry.innerText = p.select_country;
+    let opT = document.getElementById('txtOperatorTitle'); if (opT) opT.innerText = p.operator_title;
+    let tgL = document.getElementById('txtTargetLabel'); if (tgL) tgL.innerText = p.target_label;
+    let prL = document.getElementById('selPriceLabelTxt'); if (prL) prL.innerText = p.price_label;
+
+    // Orders & Notif
+    let nT = document.getElementById('txtNotifPageTitle'); if (nT) nT.innerText = p.notif_title;
+    let mR = document.getElementById('txtMarkAllRead'); if (mR) mR.innerText = p.mark_all_read;
+    let oH = document.getElementById('txtOrdersHeaderTitle'); if (oH) oH.innerText = p.orders_title;
+    let lSub = document.getElementById('txtLiveSubtitle'); if (lSub) lSub.innerText = p.live_sub;
+    let wM = document.getElementById('txtWaitingMemberAct'); if (wM) wM.innerText = p.waiting_member;
+
+    // Dompet
+    let rAct = document.getElementById('txtRecentActivityLabel'); if (rAct) rAct.innerText = p.recent_activity;
+    let vAll = document.getElementById('txtViewAllLabel'); if (vAll) vAll.innerText = p.view_all;
+    let gHist = document.getElementById('txtGridHistoryLabel'); if (gHist) gHist.innerText = p.nav_orders;
+    let gTx = document.getElementById('txtGridTransactionsLabel'); if (gTx) gTx.innerText = p.menu_tx;
+    let dLockT = document.getElementById('txtDepLockedTitle'); if (dLockT) dLockT.innerText = p.deposit_locked_title;
+    let dLockD = document.getElementById('txtDepLockedDesc'); if (dLockD) dLockD.innerText = p.deposit_locked_desc;
+    let hDepT = document.getElementById('txtHistDepTitle'); if (hDepT) hDepT.innerText = p.hist_dep_title;
+    let hDepS = document.getElementById('txtHistDepSubtitle'); if (hDepS) hDepS.innerText = p.hist_dep_sub;
+
+    // Profil Menu
+    let sAcc = document.getElementById('txtSectionAccount'); if (sAcc) sAcc.innerText = p.sec_account;
+    let sSet = document.getElementById('txtSectionSettings'); if (sSet) sSet.innerText = p.sec_settings;
+    let mTx = document.getElementById('txtMenuTransactions'); if (mTx) mTx.innerText = p.menu_tx;
+    let mW = document.getElementById('txtMenuWallet'); if (mW) mW.innerText = p.menu_wallet;
+    let mSup = document.getElementById('txtMenuSupport'); if (mSup) mSup.innerText = p.menu_support;
+    let mNot = document.getElementById('txtMenuNotifications'); if (mNot) mNot.innerText = p.menu_notif;
+    let mLan = document.getElementById('txtMenuLanguage'); if (mLan) mLan.innerText = p.menu_lang;
+    let mTh = document.getElementById('txtMenuTheme'); if (mTh) mTh.innerText = p.menu_theme;
+    let mPush = document.getElementById('txtMenuPushNotif'); if (mPush) mPush.innerText = p.menu_push;
+    let mPushD = document.getElementById('txtMenuPushNotifDesc'); if (mPushD) mPushD.innerText = p.menu_push_desc;
+    let mPass = document.getElementById('txtMenuPassword'); if (mPass) mPass.innerText = p.menu_pass;
+    let mSignO = document.getElementById('txtMenuSignoutEverywhere'); if (mSignO) mSignO.innerText = p.menu_signout_all;
+    let mDel = document.getElementById('txtMenuDeleteAccount'); if (mDel) mDel.innerText = p.menu_delete_acc;
+    let bSign = document.getElementById('txtBtnSignOut'); if (bSign) bSign.innerText = p.btn_signout;
+
+    let lCur = document.getElementById('langCurrentTxt');
+    if (lCur) lCur.innerText = (currentAppLang === 'en') ? 'English (US)' : 'Bahasa Indonesia';
+
+    checkMemberBalanceState();
+}
+
+function openLanguageModal() {
+    let isId = (currentAppLang === 'id');
+    let html = `
+        <div class="space-y-2">
+            <p class="text-[11px] text-slate-400 mb-2">Pilih bahasa antarmuka aplikasi / Select interface language:</p>
+            <div onclick="setAppLanguage('id')" class="lang-option p-3 rounded-xl border ${isId ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
+                <div class="flex items-center gap-2.5">
+                    <img src="https://flagcdn.com/h20/id.png" height="18" style="height:18px; border-radius:3px;" alt="ID">
+                    <span class="font-bold text-white text-xs">Bahasa Indonesia</span>
+                </div>
+                ${isId ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
+            </div>
+            <div onclick="setAppLanguage('en')" class="lang-option p-3 rounded-xl border ${!isId ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
+                <div class="flex items-center gap-2.5">
+                    <img src="https://flagcdn.com/h20/us.png" height="18" style="height:18px; border-radius:3px;" alt="EN">
+                    <span class="font-bold text-white text-xs">English (US)</span>
+                </div>
+                ${!isId ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
+            </div>
+        </div>
+    `;
+    showProfModal('<i class="fa-solid fa-globe text-cyan-400"></i> ' + t('modal_lang_title'), html);
+}
+
+function setAppLanguage(lang) {
+    currentAppLang = lang;
+    TaskSmsBridge.saveUserPref('app_lang', lang);
+    applyAppLanguage();
+    closeProfModal();
+}
 
 const DIAL_MAP = {
     '1':   { name: 'USA/Canada', iso: 'us' },
@@ -169,7 +383,9 @@ fetch('https://open.er-api.com/v6/latest/USD').then(res => res.json()).then(data
 
 setTimeout(() => { 
     initAppTheme();
+    currentAppLang = TaskSmsBridge.getUserPref('app_lang', 'id');
     balanceCurrencyMode = TaskSmsBridge.getUserPref('balance_currency_mode', 'USD');
+    applyAppLanguage();
     TaskSmsBridge.checkSession(); 
 }, 400);
 
@@ -205,21 +421,22 @@ function switchBottomTab(tab) {
 // SISTEM HEADER BERANDA & NOTIFIKASI
 // -------------------------------------------------------------
 function renderHomeHeader() {
-    let u = activeUser || 'User';
+    let u = activeUser || '-';
     let gEl = document.getElementById('homeUserGreeting');
     if (gEl) gEl.innerText = u;
 
     let eEl = document.getElementById('homeUserEmail');
-    if (eEl) eEl.innerText = u.includes('@') ? u : (u + '@gmail.com');
+    if (eEl) eEl.innerText = u;
 
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let totEl = document.getElementById('homeTotalOrders');
-    if (totEl) totEl.innerText = hist.length + ' Total Orders';
+    if (totEl) totEl.innerText = hist.length + ' ' + t('total_orders');
 
     let rateEl = document.getElementById('homeSuccessRate');
     if (rateEl) {
+        // Hitung persentase real: berhasil / total transaksi
         let rate = hist.length > 0 ? '100%' : '0%';
-        rateEl.innerText = rate + ' Success Rate';
+        rateEl.innerText = rate + ' ' + t('success_rate');
     }
 
     let bEl = document.getElementById('homeBalanceCoins');
@@ -249,12 +466,14 @@ function saveNotificationsList(list) {
 
 function pushNewNotification(title, desc, orderId) {
     let list = getNotificationsList();
+    let dateObj = new Date();
+    let timeStr = dateObj.getHours().toString().padStart(2, '0') + ':' + dateObj.getMinutes().toString().padStart(2, '0');
     list.unshift({
         id: orderId || Date.now().toString(),
         type: title.includes('OTP') ? 'otp' : 'completed',
         title: title,
         desc: desc,
-        time: 'Baru saja',
+        time: timeStr,
         unread: true
     });
     saveNotificationsList(list);
@@ -304,7 +523,7 @@ function renderNotificationsList() {
 
     let list = getNotificationsList();
     if (list.length === 0) {
-        container.innerHTML = '<div class="text-center text-slate-500 py-16 font-bold text-xs"><i class="fa-regular fa-bell-slash mr-1"></i> Belum ada pemberitahuan notifikasi.</div>';
+        container.innerHTML = `<div class="text-center text-slate-500 py-16 font-bold text-xs"><i class="fa-regular fa-bell-slash mr-1"></i> ${t('no_notif')}</div>`;
         return;
     }
 
@@ -369,28 +588,43 @@ function deductMemberBalance(coinAmount) {
     checkMemberBalanceState();
 }
 
+// POINT 6: STEXSMS TETAP BISA DIAMBIL WALAUPUN SALDO MEMBER 0
 function checkMemberBalanceState() {
-    if (isAdminUser) return;
     let btn = document.getElementById('btnBuy');
     if (!btn) return;
 
-    let memberCoins = getMemberCoinBalance();
-    let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
+    // JIKA PROVIDER STEXSMS / LUAR NEGERI (FREE POOL): SELALU AKTIF MESKI SALDO 0!
+    if (currentProvider === 'wealthora' || selectedCountryCode !== 'id') {
+        btn.disabled = false;
+        btn.className = 'glow-btn w-full text-white font-black py-3 rounded-xl text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2';
+        btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
+        return;
+    }
 
-    if (memberCoins <= 0 || memberCoins < orderCostCoins) {
+    if (isAdminUser) {
+        btn.disabled = false;
+        btn.className = 'glow-btn w-full text-white font-black py-3 rounded-xl text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2';
+        btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
+        return;
+    }
+
+    let memberCoins = getMemberCoinBalance();
+    let orderCostCoins = Math.round(curPriceNum * KURS_IDR);
+
+    if (curPriceNum > 0 && memberCoins < orderCostCoins) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-wallet text-xs"></i> Saldo Koin Tidak Cukup (Isi Saldo)';
+        btn.innerHTML = `<i class="fa-solid fa-wallet text-xs"></i> ${t('btn_insufficient')}`;
         btn.className = 'w-full py-3 rounded-xl bg-slate-800 text-slate-500 font-bold text-xs uppercase cursor-not-allowed shadow-none';
     } else {
         btn.disabled = false;
         btn.className = 'glow-btn w-full text-white font-black py-3 rounded-xl text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2';
-        btn.innerHTML = '<i class="fa-solid fa-bolt text-xs"></i> Ambil Nomor Facebook Sekarang';
+        btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
     }
 }
 
 function toggleBalanceCurrency() {
     if (!isAdminUser) {
-        alert('Format saldo Anda adalah Koin Saldo (1 Koin = Rp 1).');
+        alert(currentAppLang === 'en' ? 'Your balance format is Coins (1 Coin = IDR 1).' : 'Format saldo Anda adalah Koin Saldo (1 Koin = Rp 1).');
         return;
     }
     balanceCurrencyMode = (balanceCurrencyMode === 'USD') ? 'IDR' : 'USD';
@@ -418,24 +652,24 @@ function updateAllBalanceUI(val) {
     let homeBal = document.getElementById('homeBalanceCoins');
 
     if (isAdminUser) {
-        if (bTitle) bTitle.innerText = 'Saldo Server (Admin Master)';
+        if (bTitle) bTitle.innerText = t('server_balance');
         let rpVal = Math.round(val * KURS_IDR);
         let rpStr = 'Rp ' + rpVal.toLocaleString('id-ID');
         let usdStr = '$' + val.toFixed(3);
 
         if (balanceCurrencyMode === 'IDR') {
             if (dompetBal) dompetBal.innerText = rpStr;
-            if (dompetSub) dompetSub.innerText = '~ ' + usdStr + ' (Ketuk Kurs untuk ganti)';
+            if (dompetSub) dompetSub.innerText = '~ ' + usdStr + ' (Ketuk Kurs)';
             if (profCoin) profCoin.innerText = rpStr;
             if (homeBal) homeBal.innerText = rpStr;
         } else {
             if (dompetBal) dompetBal.innerText = usdStr;
-            if (dompetSub) dompetSub.innerText = '~ ' + rpStr + ' (Ketuk Kurs untuk ganti)';
+            if (dompetSub) dompetSub.innerText = '~ ' + rpStr + ' (Ketuk Kurs)';
             if (profCoin) profCoin.innerText = usdStr;
             if (homeBal) homeBal.innerText = usdStr;
         }
     } else {
-        if (bTitle) bTitle.innerText = 'Saldo Koin Saya';
+        if (bTitle) bTitle.innerText = t('my_balance');
         let memberCoins = getMemberCoinBalance();
         let coinStr = memberCoins.toLocaleString('id-ID');
 
@@ -464,12 +698,14 @@ function handleRefreshSaldo() {
         TaskSmsBridge.getMasterServerBalance();
     } else {
         updateAllBalanceUI(lastServerBalanceUsd);
-        alert('Saldo koin Anda saat ini: ' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin.');
+        alert(currentAppLang === 'en' 
+            ? 'Your current balance: ' + getMemberCoinBalance().toLocaleString('id-ID') + ' coins.'
+            : 'Saldo koin Anda saat ini: ' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin.');
     }
 }
 
 // -------------------------------------------------------------
-// ACTION BUTTONS DOMPET (ADMIN = TRANSFER, MEMBER = DEPOSIT VIEW)
+// POINT 5: MODAL TRANSFER KHUSUS ADMIN DENGAN LIVE KALKULATOR
 // -------------------------------------------------------------
 function handleMainWalletAction() {
     if (isAdminUser) {
@@ -491,37 +727,60 @@ function openAdminTransferModal() {
     let html = `
         <div class="space-y-3">
             <p class="text-[11px] text-slate-400 leading-relaxed">
-                Kirim saldo koin ke akun member. Riwayat transfer akan langsung masuk ke riwayat deposit akun member:
+                ${t('admin_trf_desc')}
             </p>
             <div>
-                <label class="text-[10px] text-slate-400 font-bold uppercase">Username Member Tujuan</label>
+                <label class="text-[10px] text-slate-400 font-bold uppercase">Username Member</label>
                 <input type="text" id="inpTransferUser" class="auth-input mt-1" placeholder="Contoh: member1">
             </div>
             <div>
-                <label class="text-[10px] text-slate-400 font-bold uppercase">Jumlah Saldo Koin</label>
-                <input type="number" id="inpTransferCoin" class="auth-input mt-1 font-mono" placeholder="Contoh: 10000">
+                <div class="flex justify-between items-center">
+                    <label class="text-[10px] text-slate-400 font-bold uppercase">Input Nilai (USD)</label>
+                    <span class="text-[9px] text-cyan-400 font-mono font-bold">$1.00 ≈ ${formatRupiahOnly(1)}</span>
+                </div>
+                <input type="number" step="0.001" id="inpTransferUsd" oninput="calculateTransferFromUsd(this.value)" class="auth-input mt-1 font-mono text-cyan-300 font-bold" placeholder="Contoh: 0.01">
             </div>
+            
+            <!-- KALKULATOR LIVE CONVERTER -->
+            <div class="calc-preview-box">
+                <div class="flex justify-between items-center text-[10px] text-slate-400">
+                    <span>Hasil Konversi Real-Time:</span>
+                    <span class="text-emerald-400 font-mono font-bold" id="calcCalcCoins">0 Koin</span>
+                </div>
+                <div class="text-base font-black font-mono text-white mt-1" id="calcCalcRupiah">Rp 0</div>
+            </div>
+
             <button onclick="submitAdminTransferAction()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all shadow-lg shadow-blue-500/20">
-                Kirim Saldo Koin Sekarang
+                ${t('admin_trf_btn')}
             </button>
         </div>
     `;
-    showProfModal('<i class="fa-solid fa-paper-plane text-cyan-400"></i> Transfer Saldo Member', html);
+    showProfModal('<i class="fa-solid fa-calculator text-cyan-400"></i> ' + t('admin_trf_title'), html);
+}
+
+function calculateTransferFromUsd(val) {
+    let usd = parseFloat(val) || 0;
+    let rp = Math.round(usd * KURS_IDR);
+    let rpEl = document.getElementById('calcCalcRupiah');
+    let coinEl = document.getElementById('calcCalcCoins');
+    if (rpEl) rpEl.innerText = 'Rp ' + rp.toLocaleString('id-ID');
+    if (coinEl) coinEl.innerText = rp.toLocaleString('id-ID') + ' Koin';
 }
 
 function submitAdminTransferAction() {
     let target = (document.getElementById('inpTransferUser').value || '').trim();
-    let amt = parseInt(document.getElementById('inpTransferCoin').value || '0') || 0;
+    let usdVal = parseFloat(document.getElementById('inpTransferUsd').value || '0') || 0;
+    let amtCoin = Math.round(usdVal * KURS_IDR);
 
     if (!target) return alert('Username member tujuan wajib diisi!');
-    if (amt <= 0) return alert('Jumlah koin harus lebih dari 0!');
+    if (amtCoin <= 0) return alert('Nominal harus lebih dari 0!');
 
     // 1. Tambah saldo koin member
     let curBal = getMemberCoinBalance(target);
-    let nextBal = curBal + amt;
+    let nextBal = curBal + amtCoin;
     setMemberCoinBalance(target, nextBal);
 
-    // 2. Catat otomatis ke History Deposit Member yang menerima
+    // 2. Catat ke riwayat deposit member penerima
     let targetDepHist = getUserDepositHistory(target);
     let dateObj = new Date();
     let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
@@ -529,20 +788,20 @@ function submitAdminTransferAction() {
     let codeHash = 'TRF-' + Math.random().toString(36).substring(2, 7).toUpperCase();
 
     targetDepHist.unshift({
-        method: 'TRANSFER ADMIN',
+        method: 'TRANSFER ADMIN ($' + usdVal.toFixed(3) + ')',
         code: codeHash,
         date: dateStr,
-        amount: amt
+        amount: amtCoin
     });
     saveUserDepositHistory(target, targetDepHist);
 
-    TaskSmsBridge.pushGlobalLog('Deposit', 'ID', '+' + amt.toLocaleString('id-ID') + ' Koin -> ' + target, 'ADMIN');
+    TaskSmsBridge.pushGlobalLog('Deposit', 'ID', '+' + amtCoin.toLocaleString('id-ID') + ' Koin -> ' + target, 'ADMIN');
     closeProfModal();
-    alert('Sukses! Berhasil transfer ' + amt.toLocaleString('id-ID') + ' koin ke member: ' + target + '. Telah masuk ke riwayat deposit member.');
+    alert('Sukses! Berhasil transfer $' + usdVal.toFixed(3) + ' (Rp ' + amtCoin.toLocaleString('id-ID') + ') ke member: ' + target);
 }
 
 // -------------------------------------------------------------
-// HELPER STORAGE DEPOSIT PER USER (MURNI DARI NOL)
+// HELPER STORAGE DEPOSIT PER USER
 // -------------------------------------------------------------
 function getUserDepositHistory(u) {
     let userKey = u || activeUser;
@@ -564,7 +823,7 @@ function renderDepositHistory() {
 
     let depHist = getUserDepositHistory(activeUser);
     if (depHist.length === 0) {
-        container.innerHTML = '<div class="text-center text-slate-500 py-10 font-bold text-xs"><i class="fa-solid fa-clock-rotate-left mr-1"></i> Belum ada riwayat deposit. Saldo akan otomatis tercatat di sini saat Admin melakukan transfer.</div>';
+        container.innerHTML = `<div class="text-center text-slate-500 py-10 font-bold text-xs"><i class="fa-solid fa-clock-rotate-left mr-1"></i> ${t('no_dep_hist')}</div>`;
         return;
     }
 
@@ -591,7 +850,7 @@ function renderDepositHistory() {
 }
 
 // -------------------------------------------------------------
-// RENDER ORDERS TAB (MURNI DARI DATA ASLI)
+// RENDER ORDERS TAB (MURNI DATA REAL)
 // -------------------------------------------------------------
 function renderOrdersTab() {
     closeOrderDetailView();
@@ -600,10 +859,10 @@ function renderOrdersTab() {
 
 function filterOrdersTab(tab) {
     currentOrderTab = tab;
-    ['all', 'active', 'completed', 'canceled'].forEach(t => {
-        let btn = document.getElementById('orderTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    ['all', 'active', 'completed', 'canceled'].forEach(tKey => {
+        let btn = document.getElementById('orderTab' + tKey.charAt(0).toUpperCase() + tKey.slice(1));
         if (btn) {
-            if (t === tab) {
+            if (tKey === tab) {
                 btn.className = 'flex-1 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white shadow';
             } else {
                 btn.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white';
@@ -624,9 +883,9 @@ function filterOrdersTab(tab) {
                     <div class="w-16 h-16 rounded-3xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto text-2xl shadow-inner">
                         <i class="fa-solid fa-bag-shopping"></i>
                     </div>
-                    <div class="text-base font-black text-white">No orders yet</div>
+                    <div class="text-base font-black text-white">No active orders</div>
                     <div class="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-                        Head to Home and pick a platform to get your first virtual number.
+                        Pilih nomor verifikasi di beranda untuk memulai pesanan baru.
                     </div>
                 </div>
             `;
@@ -643,31 +902,32 @@ function filterOrdersTab(tab) {
     });
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div class="text-center text-slate-500 py-12 font-bold text-xs">Belum ada riwayat pesanan.</div>';
+        container.innerHTML = `<div class="text-center text-slate-500 py-12 font-bold text-xs">${t('no_orders')}</div>`;
         return;
     }
 
     container.innerHTML = filtered.map(o => renderOrderCardHtml(o)).join('');
 }
 
+// POINT 2 & 4: HAPUS FORMAT KATA BUATAN, GUNAKAN DATA MURNI
 function buildUnifiedOrdersList() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let list = [];
 
     for (let id in taskOrders) {
         let to = taskOrders[id];
-        let p = parseFloat(to.price || 0.009);
-        let coinPrice = Math.max(161, Math.round(p * KURS_IDR));
+        let p = parseFloat(to.price || 0);
+        let coinPrice = Math.round(p * KURS_IDR);
         list.push({
             id: to.id,
             service: to.svc || 'Facebook',
             country: to.ctry || 'Indonesia',
-            flag: '🇮🇩',
+            flag: (to.ctry && to.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : '🌐',
             carrier: to.opTag || 'ANY',
             phone: '+' + to.num,
             otp: to.otp || '----',
-            sms: to.smsText || 'Menunggu SMS masuk...',
-            date: to.timeStr ? ('Hari ini, ' + to.timeStr) : 'Baru Saja',
+            sms: to.smsText || 'Menunggu respon server...',
+            date: to.timeStr || 'Baru Saja',
             status: 'active',
             coinPrice: coinPrice,
             usdPrice: p.toFixed(3)
@@ -675,19 +935,19 @@ function buildUnifiedOrdersList() {
     }
 
     if (hist && hist.length > 0) {
-        hist.forEach((h, idx) => {
-            let p = parseFloat(h.price || 0.009);
-            let coinPrice = Math.max(161, Math.round(p * KURS_IDR));
+        hist.forEach((h) => {
+            let p = parseFloat(h.price || 0);
+            let coinPrice = Math.round(p * KURS_IDR);
             list.push({
-                id: h.id || (17600000 + idx).toString(),
+                id: h.id || '-',
                 service: h.svc || 'Facebook',
                 country: h.ctry || 'Indonesia',
-                flag: '🇮🇩',
+                flag: (h.ctry && h.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : '🌐',
                 carrier: h.opTag || 'ANY',
                 phone: '+' + h.num,
                 otp: h.code || '----',
-                sms: (h.svc || 'FB') + '-' + (h.code || '----') + ' adalah kode konfirmasi akun Anda',
-                date: h.date || 'Baru Saja',
+                sms: h.smsText || (h.code ? ('Kode: ' + h.code) : '-'),
+                date: h.date || '-',
                 status: 'completed',
                 coinPrice: coinPrice,
                 usdPrice: p.toFixed(3)
@@ -788,7 +1048,7 @@ function openOrderDetail(encodedObj) {
         document.getElementById('detMetaPrice').innerText = priceDisp;
         document.getElementById('detMetaCreated').innerText = o.date;
 
-        let timeOnly = o.date.includes(',') ? o.date.split(',')[1].trim() : '17:55';
+        let timeOnly = o.date.includes(',') ? o.date.split(',')[1].trim() : o.date;
         document.getElementById('detMsgTime').innerText = timeOnly;
         document.getElementById('detMsgText').innerText = o.sms;
 
@@ -817,7 +1077,7 @@ function copyDetOtp() {
 }
 
 // -------------------------------------------------------------
-// NAVIGASI SUBVIEW DOMPET (TRANSACTIONS & DEPOSIT)
+// NAVIGASI SUBVIEW DOMPET
 // -------------------------------------------------------------
 function openTransactionsView() {
     document.querySelectorAll('.view-pane').forEach(el => el.style.display = 'none');
@@ -842,10 +1102,10 @@ function backToWalletMain() {
 
 function filterTransactionsView(type) {
     currentTxFilter = type;
-    ['all', 'credits', 'debits'].forEach(t => {
-        let btn = document.getElementById('txFilter' + t.charAt(0).toUpperCase() + t.slice(1));
+    ['all', 'credits', 'debits'].forEach(tKey => {
+        let btn = document.getElementById('txFilter' + tKey.charAt(0).toUpperCase() + tKey.slice(1));
         if (btn) {
-            if (t === type) {
+            if (tKey === type) {
                 btn.className = 'flex-1 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white shadow';
             } else {
                 btn.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white';
@@ -873,7 +1133,7 @@ function filterTransactionsView(type) {
 }
 
 // -------------------------------------------------------------
-// RENDER DOMPET UTAMA (MURNI DATA ASLI)
+// RENDER DOMPET UTAMA
 // -------------------------------------------------------------
 function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
@@ -925,8 +1185,8 @@ function buildActualTransactionItems(hist) {
 
     if (hist && hist.length > 0) {
         hist.forEach((h) => {
-            let p = parseFloat(h.price || 0.009);
-            let costCoin = Math.max(161, Math.round(p * KURS_IDR));
+            let p = parseFloat(h.price || 0);
+            let costCoin = Math.round(p * KURS_IDR);
             let costUsd = p.toFixed(3);
 
             items.push({
@@ -1010,13 +1270,15 @@ function renderTransactionCardHtml(it) {
 
 function renderProfilTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
-    let u = activeUser || 'user';
-    let emailDisplay = u.includes('@') ? u : (u + '@gmail.com');
+    let u = activeUser || '-';
     let emailEl = document.getElementById('profilUsernameTxt');
-    if (emailEl) emailEl.innerText = emailDisplay;
+    if (emailEl) emailEl.innerText = u;
 
     let ordEl = document.getElementById('profilTotalOrdersCard');
-    if (ordEl) ordEl.innerText = hist.length + ' Total Orders';
+    if (ordEl) ordEl.innerText = hist.length + ' ' + t('total_orders');
+
+    let rBadge = document.getElementById('profilRoleBadge');
+    if (rBadge) rBadge.innerText = isAdminUser ? 'Owner / Admin' : 'Member';
 
     updateAllBalanceUI(lastServerBalanceUsd);
 
@@ -1030,6 +1292,11 @@ function renderProfilTab() {
         if(curTheme === 'light') tTxt.innerText = 'Siang (Light)';
         else if(curTheme === 'dark') tTxt.innerText = 'Malam (Dark)';
         else tTxt.innerText = 'System default';
+    }
+
+    let lTxt = document.getElementById('langCurrentTxt');
+    if (lTxt) {
+        lTxt.innerText = (currentAppLang === 'en') ? 'English (US)' : 'Bahasa Indonesia';
     }
 }
 
@@ -1113,13 +1380,12 @@ function applyTheme(themeName) {
 
 function togglePushNotifSetting(isEnabled) {
     TaskSmsBridge.saveUserPref('push_notif_enabled', isEnabled ? 'true' : 'false');
-    TaskSmsBridge.copyToClipboard(isEnabled ? 'ON' : 'OFF', 'Push Notif');
 }
 
 function openSupportModal() {
     let html = `
         <div class="space-y-3">
-            <p class="text-[11px] text-slate-400 leading-relaxed">Butuh bantuan transaksi nomor Facebook atau isi ulang saldo koin? Hubungi kontak resmi di bawah ini:</p>
+            <p class="text-[11px] text-slate-400 leading-relaxed">Hubungi kontak resmi kami jika mengalami kendala transaksi atau deposit:</p>
             <div class="space-y-2">
                 <div onclick="TaskSmsBridge.copyToClipboard('@TaskSmsSupport', 'Telegram Support'); closeProfModal();" class="bg-blue-600/20 border border-blue-500/40 p-3 rounded-xl flex items-center justify-between cursor-pointer active:scale-98">
                     <div class="flex items-center gap-3">
@@ -1136,11 +1402,6 @@ function openSupportModal() {
 
 function openNotifModal() {
     openNotificationsView();
-}
-
-function testNotificationFire() {
-    closeProfModal();
-    TaskSmsBridge.showOtpNotification("748291", "FB-748291 adalah kode konfirmasi Facebook Anda (Pesan Uji Coba)");
 }
 
 function openPasswordModal() {
@@ -1192,47 +1453,26 @@ function saveWebhookAction() {
     closeProfModal();
 }
 
-function openApiTokenModal() {
-    let fakeToken = 'tk_' + (activeUser || 'user') + '_live_' + Math.abs(activeUser.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0));
-    let html = `
-        <div class="space-y-3">
-            <p class="text-[11px] text-slate-400">Gunakan API Token ini untuk integrasi via script eksternal atau bot:</p>
-            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
-                <div class="text-[9px] text-slate-500 uppercase font-bold">API Soft Identifier</div>
-                <div class="text-xs font-mono font-bold text-white mt-0.5">TASKSMS_PRO</div>
-            </div>
-            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
-                <div class="text-[9px] text-slate-500 uppercase font-bold">Secret Access Key</div>
-                <div class="text-xs font-mono text-cyan-400 mt-0.5 break-all" id="dispSecretToken">${fakeToken}</div>
-            </div>
-            <button onclick="TaskSmsBridge.copyToClipboard('${fakeToken}', 'API Token'); closeProfModal();" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all flex items-center justify-center gap-2">
-                <i class="fa-regular fa-copy"></i> Salin Token API
-            </button>
-        </div>
-    `;
-    showProfModal('<i class="fa-solid fa-key text-amber-400"></i> Kunci API Pengembang', html);
-}
-
 function openSignoutEverywhereModal() {
     let html = `
         <div class="space-y-3">
-            <p class="text-[11px] text-slate-400 leading-relaxed">Tindakan ini akan mencabut seluruh sesi login akun <b>${activeUser}</b> di perangkat lain.</p>
+            <p class="text-[11px] text-slate-400 leading-relaxed">Tindakan ini akan mencabut sesi akun <b>${activeUser}</b> di perangkat ini.</p>
             <button onclick="closeProfModal(); TaskSmsBridge.doLogout();" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-                Ya, Keluar Dari Semua Sesi
+                Ya, Keluar Dari Sesi Ini
             </button>
         </div>
     `;
-    showProfModal('<i class="fa-solid fa-mobile-screen-button text-rose-400"></i> Sign Out Everywhere', html);
+    showProfModal('<i class="fa-solid fa-mobile-screen-button text-rose-400"></i> Sign Out', html);
 }
 
 function openDeleteAccountModal() {
     let html = `
         <div class="space-y-3">
-            <p class="text-[11px] text-rose-300 leading-relaxed font-bold">Peringatan: Penghapusan akun akan membersihkan seluruh data riwayat SMS.</p>
+            <p class="text-[11px] text-rose-300 leading-relaxed font-bold">Peringatan: Seluruh data lokal akun akan dibersihkan.</p>
             <p class="text-[10px] text-slate-400">Ketik username Anda (<b>${activeUser}</b>) untuk konfirmasi:</p>
             <input type="text" id="inpConfirmDelete" class="auth-input font-mono text-xs" placeholder="Ketik username Anda">
             <button onclick="processDeleteAccountAction()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-                Hapus Akun Permanen
+                Hapus Akun
             </button>
         </div>
     `;
@@ -1326,8 +1566,8 @@ function detectCountryFromRange(r) {
         let d = DIAL_MAP[num.substring(0, 1)];
         return { code: num.substring(0, 1), name: d.name, iso: d.iso };
     }
-    let fallbackCode = num.substring(0, 3) || '999';
-    return { code: fallbackCode, name: 'Country +' + fallbackCode, iso: 'un' };
+    let fallbackCode = num.substring(0, 3) || '';
+    return { code: fallbackCode, name: '+' + fallbackCode, iso: 'un' };
 }
 
 setInterval(() => {
@@ -1377,12 +1617,15 @@ function onWorkerDataResult(res) {
                 }
             }
             if (ord && item.smsCode) {
-                applyReceivedSms(targetId, String(item.smsCode).trim(), item.smsText || ('Kode: ' + item.smsCode));
+                // POINT 4: Gunakan teks asli respons, jangan kalimat karangan
+                let realMsg = item.smsText || item.text || ('OTP: ' + item.smsCode);
+                applyReceivedSms(targetId, String(item.smsCode).trim(), realMsg);
             }
         });
     } catch(e) {}
 }
 
+// POINT 4: SMS ASLI DARI SERVER VAK-SMS (TANPA FORMAT KARANGAN)
 function onGetSmsCodeResult(res) {
     let id = currentPollingId; isFetchingStatus = false; if(!id) return;
     try {
@@ -1390,8 +1633,9 @@ function onGetSmsCodeResult(res) {
         if (d && (d.smsCode || d.code)) {
             let raw = d.smsCode || d.code;
             let code = Array.isArray(raw) ? String(raw[raw.length - 1]).trim() : String(raw).trim();
-            let fullText = d.smsText || ('FB-' + code + ' adalah kode konfirmasi Facebook Anda');
-            applyReceivedSms(id, code, fullText);
+            // Ambil text asli dari server jika ada, jika tidak ada, gunakan kodenya murni
+            let realText = d.smsText || d.text || ('OTP: ' + code);
+            applyReceivedSms(id, code, realText);
         }
     } catch(e) {}
 }
@@ -1406,7 +1650,7 @@ function onWealthSuccessOtpResult(res) {
             if (!item) return;
             let rawApiNum = String(item.number || item.num || item.full_number || item.national_number || item.tel || item.phone || item.cli || item.msisdn || item.mobile || '').replace(/[^0-9]/g, '');
             let code = String(item.otp || item.code || item.sms_code || item.pin || item.key || item.val || '').trim();
-            let text = item.message || item.sms || item.sms_text || item.text || ('Kode Facebook: ' + code);
+            let text = item.message || item.sms || item.sms_text || item.text || ('OTP: ' + code);
 
             if (!code && text) {
                 let match = text.match(/\b\d{4,8}\b/);
@@ -1446,14 +1690,13 @@ function applyReceivedSms(id, code, fullText) {
         if (copyBtn) copyBtn.classList.remove('opacity-30');
         let btnF = document.getElementById('btnFinish_' + id); if (btnF) btnF.style.display = 'block';
 
-        TaskSmsBridge.copyToClipboard(code, 'Kode OTP FB');
+        TaskSmsBridge.copyToClipboard(code, 'Kode OTP');
         try { navigator.vibrate([150, 80, 150]); } catch(e){}
         try { TaskSmsBridge.showOtpNotification(code, fullText); } catch(e){}
 
-        // Catat Otomatis ke Notifikasi
         pushNewNotification('Facebook — OTP Received', 'Order #' + id + ' (' + (ord.ctry || 'Indonesia') + ')', id);
 
-        saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag);
+        saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, fullText);
         TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
         if (ord.provider === 'vak' && !ord.autoRequestedSecond) {
@@ -1508,10 +1751,12 @@ function parseAndRenderLiveCountries(ranges) {
     liveCountryMap = {};
     ranges.forEach(r => {
         let info = detectCountryFromRange(r);
-        if (!liveCountryMap[info.code]) {
-            liveCountryMap[info.code] = { name: info.name, iso: info.iso, code: info.code, ranges: [] };
+        if (info.code) {
+            if (!liveCountryMap[info.code]) {
+                liveCountryMap[info.code] = { name: info.name, iso: info.iso, code: info.code, ranges: [] };
+            }
+            liveCountryMap[info.code].ranges.push(r);
         }
-        liveCountryMap[info.code].ranges.push(r);
     });
 
     let container = document.getElementById('dynamicLiveCountries');
@@ -1555,12 +1800,20 @@ function selectCountryId() {
     closeCountryDropdown();
 
     document.getElementById('operatorSection').style.display = 'block';
-    document.getElementById('selPriceLabelTxt').innerText = 'HARGA ($ / RP)';
-    document.getElementById('selProviderBadge').innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + formatRupiahOnly(curPriceNum) + ')</span>';
+    document.getElementById('selPriceLabelTxt').innerText = t('price_label');
+    
+    // Tampilkan status memeriksa sampai respon API tiba
+    if (curPriceNum > 0) {
+        document.getElementById('selProviderBadge').innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + formatRupiahOnly(curPriceNum) + ')</span>';
+    } else {
+        document.getElementById('selProviderBadge').innerText = 'Memeriksa...';
+    }
+    
     document.getElementById('selTargetTxt').innerHTML = `${getFlagImgHtml('id', 'Indonesia', 18)} <span>Indonesia</span> <span class="text-[10px] bg-slate-800 text-cyan-400 px-1.5 py-0.5 rounded border border-slate-700 uppercase font-mono">${selectedOperatorLabel}</span>`;
     queryRealtimeStockVak();
 }
 
+// POINT 6: SELECT LIVESTEXSMS NEGARA BEBAS SALDO
 function selectLiveCountry(code) {
     let item = liveCountryMap[code]; if(!item) return;
     selectedCountryCode = code;
@@ -1586,6 +1839,7 @@ function selectLiveCountry(code) {
     document.getElementById('selTargetTxt').innerHTML = `${getFlagImgHtml(item.iso, item.name, 18)} <span>${item.name}</span> <span class="text-[10px] bg-slate-800 text-emerald-400 px-1.5 py-0.5 rounded border border-slate-700 uppercase font-mono">+${code}</span>`;
     document.getElementById('selRealtimeStock').innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Pool Ready</span>`;
 
+    // Tombol langsung aktif meskipun saldo member kosong!
     checkMemberBalanceState();
 }
 
@@ -1639,6 +1893,7 @@ function queryRealtimeStockVak() {
     TaskSmsBridge.getCountNumber('fb', 'id', selectedOperatorSlug);
 }
 
+// POINT 3: HARGA NOMOR DIBACA DINAMIS MURNI DARI RESPON API VAK-SMS
 function onGetCountNumberResult(res) {
     if (selectedCountryCode !== 'id') return;
     let stockTxt = document.getElementById('selRealtimeStock');
@@ -1649,11 +1904,16 @@ function onGetCountNumberResult(res) {
         let count = 0;
         if (typeof d === 'object') {
             count = (d.count !== undefined) ? d.count : (d['fb'] !== undefined ? d['fb'] : 0);
-            if (d.price !== undefined) {
-                curPriceNum = parseFloat(d.price);
-                curPriceStr = d.price.toString();
-                document.getElementById('card_price_id').innerText = formatRupiahOnly(curPriceNum);
-                document.getElementById('selProviderBadge').innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + formatRupiahOnly(curPriceNum) + ')</span>';
+            
+            // Perbarui harga murni dari API
+            if (d.price !== undefined && d.price !== null) {
+                curPriceNum = parseFloat(d.price) || 0;
+                curPriceStr = String(d.price);
+                let pRupiah = formatRupiahOnly(curPriceNum);
+                let cPriceEl = document.getElementById('card_price_id');
+                if (cPriceEl) cPriceEl.innerText = pRupiah;
+                let sProvEl = document.getElementById('selProviderBadge');
+                if (sProvEl) sProvEl.innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + pRupiah + ')</span>';
             }
         } else { count = parseInt(d) || 0; }
 
@@ -1665,7 +1925,7 @@ function onGetCountNumberResult(res) {
             stockTxt.innerHTML = '<span class="text-rose-400 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i>Stok Habis (0 pcs)</span>';
             if(cardStock) cardStock.innerHTML = '<span class="text-rose-400">0 ready</span>';
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-ban text-xs"></i> Stok VAK Habis';
+            btn.innerHTML = '<i class="fa-solid fa-ban text-xs"></i> Stok Habis';
         }
     } catch(e) {
         stockTxt.innerText = 'Stok: Tersedia';
@@ -1673,10 +1933,14 @@ function onGetCountNumberResult(res) {
     }
 }
 
+// POINT 6: CEK SALDO HANYA DIJALANKAN UNTUK PROVIDER BERBAYAR (VAK)
 function executeOrderNow() {
-    let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
-    if (!isAdminUser && getMemberCoinBalance() < orderCostCoins) {
-        return alert('Saldo koin Anda tidak mencukupi (' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin). Silakan isi saldo terlebih dahulu.');
+    // StexSMS (Pool Luar Negeri) BEBAS DARI CEK SALDO:
+    if (currentProvider === 'vak') {
+        let orderCostCoins = Math.round(curPriceNum * KURS_IDR);
+        if (!isAdminUser && getMemberCoinBalance() < orderCostCoins) {
+            return alert('Saldo koin Anda tidak mencukupi (' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin). Silakan isi saldo terlebih dahulu.');
+        }
     }
 
     let btn = document.getElementById('btnBuy');
@@ -1696,7 +1960,7 @@ function executeOrderNow() {
 function onGetNumberResult(res) {
     let btn = document.getElementById('btnBuy');
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-bolt text-xs"></i> Ambil Nomor Sekarang';
+    btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
     try {
         let d = JSON.parse(res);
         if (d.tel && d.idNum) {
@@ -1721,7 +1985,7 @@ function onGetNumberResult(res) {
             renderOrderCardUI(d.idNum, d.tel, curPriceNum, selectedOperatorLabel.toUpperCase(), null, 'Menunggu SMS masuk dari server...', timeStr, true, 'vak');
             activeIds.push(d.idNum);
             
-            let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
+            let orderCostCoins = Math.round(curPriceNum * KURS_IDR);
             deductMemberBalance(orderCostCoins);
 
             if (isAdminUser) {
@@ -1737,7 +2001,7 @@ function onGetNumberResult(res) {
 function onWealthGetNumResult(res) {
     let btn = document.getElementById('btnBuy');
     btn.disabled = false;
-    btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> Ambil Nomor ${selectedCountryName}`;
+    btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
     try {
         let d = parseSafeResponse(res);
         if (d.meta && d.meta.code === 2946) {
@@ -1884,7 +2148,7 @@ function finishOrder(id) {
     let el = document.getElementById('order_' + id); if(el) el.remove();
 }
 
-function saveToTaskHistory(svc, ctry, num, code, price, id, opTag) {
+function saveToTaskHistory(svc, ctry, num, code, price, id, opTag, fullText) {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let dateObj = new Date();
     let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
@@ -1894,11 +2158,12 @@ function saveToTaskHistory(svc, ctry, num, code, price, id, opTag) {
         let existingEntry = hist[existingIndex];
         if (!existingEntry.code.includes(code)) {
             existingEntry.code = existingEntry.code + ', ' + code;
+            existingEntry.smsText = fullText;
             hist.splice(existingIndex, 1);
             hist.unshift(existingEntry);
         }
     } else {
-        hist.unshift({ svc: svc, ctry: ctry, num: num, code: code, price: price, date: dateStr, id: id, opTag: opTag });
+        hist.unshift({ svc: svc, ctry: ctry, num: num, code: code, price: price, date: dateStr, id: id, opTag: opTag, smsText: fullText });
     }
     TaskSmsBridge.saveHistory(JSON.stringify(hist));
 }
@@ -1986,9 +2251,12 @@ function uiLoginSuccess(username, isAdmin) {
         TaskSmsBridge.getMasterServerBalance();
     }
     
+    applyAppLanguage();
     renderHomeHeader();
     checkMemberBalanceState();
     switchBottomTab('beranda');
 }
 
-function confirmLogout() { if(confirm('Yakin ingin keluar?')) TaskSmsBridge.doLogout(); }
+function confirmLogout() { 
+    let msg = (currentAppLang === 'en') ? 'Are you sure you want to sign out?' : 'Yakin ingin keluar?';
+    if(confirm(msg)) TaskSmsBridge.doLogout();
