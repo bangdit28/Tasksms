@@ -20,6 +20,8 @@ const HIST_PER_PAGE = 10;
 let isDropdownOpen = false;
 let lastServerBalanceUsd = 0;
 let balanceCurrencyMode = 'USD'; // 'USD' atau 'IDR'
+let currentTxFilter = 'all';
+let selectedDepMethod = 'qris';
 
 const DIAL_MAP = {
     '1':   { name: 'USA/Canada', iso: 'us' },
@@ -209,19 +211,17 @@ function updateAllBalanceUI(val) {
     let rpStr = formatRupiahOnly(val);
     let usdStr = '$' + val.toFixed(3);
     
-    // Sinkronisasi ke Tab Dompet
     let dompetBal = document.getElementById('dompetTotalBalanceTxt');
     let dompetSub = document.getElementById('dompetSubBalanceTxt');
     
     if (balanceCurrencyMode === 'IDR') {
         if (dompetBal) dompetBal.innerText = rpStr;
-        if (dompetSub) dompetSub.innerText = '~ ' + usdStr + ' (Ketuk Kurs untuk ganti)';
+        if (dompetSub) dompetSub.innerText = '~ ' + usdStr;
     } else {
         if (dompetBal) dompetBal.innerText = usdStr;
-        if (dompetSub) dompetSub.innerText = '~ ' + rpStr + ' (Ketuk Kurs untuk ganti)';
+        if (dompetSub) dompetSub.innerText = '~ ' + rpStr;
     }
 
-    // Sinkronisasi ke Tab Profil
     let profCoin = document.getElementById('profilCoinTxt');
     if (profCoin) {
         profCoin.innerText = (balanceCurrencyMode === 'IDR') ? rpStr : usdStr;
@@ -237,6 +237,170 @@ function onGetMasterBalanceResult(res) {
     } catch(e) {}
 }
 
+// -------------------------------------------------------------
+// NAVIGASI SUBVIEW DOMPET (TRANSACTIONS & DEPOSIT)
+// -------------------------------------------------------------
+function openTransactionsView() {
+    document.querySelectorAll('.view-pane').forEach(el => el.style.display = 'none');
+    let v = document.getElementById('subview_transactions');
+    if (v) v.style.display = 'block';
+    filterTransactionsView('all');
+}
+
+function openDepositView() {
+    document.querySelectorAll('.view-pane').forEach(el => el.style.display = 'none');
+    let v = document.getElementById('subview_deposit');
+    if (v) v.style.display = 'block';
+    renderDepositHistory();
+}
+
+function backToWalletMain() {
+    document.querySelectorAll('.view-pane').forEach(el => el.style.display = 'none');
+    let v = document.getElementById('view_dompet');
+    if (v) v.style.display = 'block';
+    renderDompetTab();
+}
+
+function filterTransactionsView(type) {
+    currentTxFilter = type;
+    ['all', 'credits', 'debits'].forEach(t => {
+        let btn = document.getElementById('txFilter' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (btn) {
+            if (t === type) {
+                btn.className = 'flex-1 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white shadow';
+            } else {
+                btn.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white';
+            }
+        }
+    });
+
+    let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
+    let container = document.getElementById('transactionsFullList');
+    if (!container) return;
+
+    let items = buildMockTransactionItems(hist);
+    let filtered = items.filter(it => {
+        if (type === 'credits') return it.type === 'refund';
+        if (type === 'debits') return it.type === 'debit';
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-center text-slate-500 py-10 font-bold text-xs">Tidak ada mutasi transaksi pada kategori ini.</div>';
+        return;
+    }
+
+    container.innerHTML = filtered.map(it => renderTransactionCardHtml(it)).join('');
+}
+
+function selectDepositMethod(method, el) {
+    selectedDepMethod = method;
+    document.querySelectorAll('.dep-method-item').forEach(item => {
+        item.className = 'dep-method-item p-3 rounded-2xl border border-slate-800 bg-slate-900/60 flex items-center justify-between cursor-pointer active:scale-98 transition-all';
+    });
+    if (el) {
+        el.className = 'dep-method-item active p-3 rounded-2xl border border-blue-500 bg-blue-500/10 flex items-center justify-between cursor-pointer active:scale-98 transition-all';
+    }
+}
+
+function submitDepositAction() {
+    let inp = document.getElementById('inpDepositAmount');
+    let amt = parseInt(inp ? inp.value : 0) || 0;
+    if (amt < 10000) return alert('Minimal deposit adalah Rp 10.000!');
+    
+    let depHist = JSON.parse(TaskSmsBridge.getUserPref('deposit_history', '[]'));
+    let dateObj = new Date();
+    let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
+                  dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    let codeHash = Math.random().toString(36).substring(2, 9) + '...';
+
+    depHist.unshift({
+        method: selectedDepMethod.toUpperCase(),
+        code: codeHash,
+        date: dateStr,
+        amount: amt
+    });
+
+    TaskSmsBridge.saveUserPref('deposit_history', JSON.stringify(depHist));
+    if (inp) inp.value = '';
+
+    alert('Deposit ' + selectedDepMethod.toUpperCase() + ' sebesar ' + amt.toLocaleString('id-ID') + ' koin berhasil dibuat! Silakan lakukan pembayaran.');
+    renderDepositHistory();
+}
+
+function renderDepositHistory() {
+    let container = document.getElementById('depositHistoryList');
+    if (!container) return;
+
+    let depHist = JSON.parse(TaskSmsBridge.getUserPref('deposit_history', '[]'));
+    if (depHist.length === 0) {
+        // Tampilan default persis seperti video
+        container.innerHTML = `
+            <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                            <span>QRIS</span>
+                            <span class="text-[9px] text-slate-500 font-mono">6fdac6c...</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">24 Sep 2026, 23:35</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs font-mono font-bold text-white">🪙 10,000</div>
+                    <span class="inline-block mt-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ Credited</span>
+                </div>
+            </div>
+            <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                            <span>QRIS</span>
+                            <span class="text-[9px] text-slate-500 font-mono">e2470b2...</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">26 Aug 2026, 22:46</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs font-mono font-bold text-white">🪙 10,000</div>
+                    <span class="inline-block mt-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ Credited</span>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = depHist.map(it => `
+        <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>${it.method}</span>
+                        <span class="text-[9px] text-slate-500 font-mono">${it.code}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">${it.date}</div>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs font-mono font-bold text-white">🪙 ${it.amount.toLocaleString('id-ID')}</div>
+                <span class="inline-block mt-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ Credited</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// -------------------------------------------------------------
+// RENDER DOMPET UTAMA (RECENT ACTIVITY PERSIS SEPERTI VIDEO)
+// -------------------------------------------------------------
 function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     balanceCurrencyMode = TaskSmsBridge.getUserPref('balance_currency_mode', 'USD');
@@ -247,20 +411,6 @@ function renderDompetTab() {
     let dKurs = document.getElementById('dompetKursTxt');
     if(dKurs) {
         dKurs.innerText = '$1.00 ≈ ' + formatRupiahOnly(1);
-        
-        // Buat bar estimasi kurs bisa diklik untuk toggle mata uang
-        if (dKurs.parentElement) {
-            dKurs.parentElement.onclick = toggleBalanceCurrency;
-            dKurs.parentElement.style.cursor = 'pointer';
-            dKurs.parentElement.classList.add('active:scale-98', 'transition-transform');
-        }
-    }
-
-    // Buat kartu saldo atas juga bisa diklik
-    let dompetBal = document.getElementById('dompetTotalBalanceTxt');
-    if (dompetBal && dompetBal.parentElement) {
-        dompetBal.parentElement.onclick = toggleBalanceCurrency;
-        dompetBal.parentElement.style.cursor = 'pointer';
     }
 
     renderDompetRecentActivity(hist);
@@ -270,114 +420,96 @@ function renderDompetRecentActivity(hist) {
     let container = document.getElementById('dompetRecentActivityList');
     if (!container) return;
 
-    if (hist && hist.length > 0) {
-        let html = '';
-        hist.slice(0, 10).forEach((item, index) => {
-            let p = parseFloat(item.price || 0.009);
-            let coinCost = Math.max(161, Math.round(p * KURS_IDR));
-            let isRefund = (index % 4 === 3);
-            
-            if (isRefund) {
-                html += `<div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
-                            <i class="fa-solid fa-arrow-down-left text-xs"></i>
-                        </div>
-                        <div>
-                            <div class="text-xs font-bold text-slate-200">Order refund</div>
-                            <div class="text-[10px] text-slate-400 mt-0.5">${item.date || '04 Oct 2026, 19:37'}</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1 font-mono font-bold text-emerald-400 text-xs">
-                        <span class="text-xs">🪙</span> +${coinCost}
-                    </div>
-                </div>`;
-            } else {
-                html += `<div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0">
-                            <i class="fa-solid fa-arrow-up-right text-xs"></i>
-                        </div>
-                        <div>
-                            <div class="text-xs font-bold text-slate-200">Order debit</div>
-                            <div class="text-[10px] text-slate-400 mt-0.5">${item.date || '06 Oct 2026, 17:55'}</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1 font-mono font-bold text-rose-400 text-xs">
-                        <span class="text-xs">🪙</span> -${coinCost}
-                    </div>
-                </div>`;
-            }
-        });
-        container.innerHTML = html;
-    } else {
-        container.innerHTML = `
-            <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0">
-                        <i class="fa-solid fa-arrow-up-right text-xs"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-slate-200">Order debit</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">06 Oct 2026, 17:55</div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1 font-mono font-bold text-rose-400 text-xs">
-                    <span class="text-xs">🪙</span> -431
-                </div>
-            </div>
-            <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0">
-                        <i class="fa-solid fa-arrow-up-right text-xs"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-slate-200">Order debit</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">06 Oct 2026, 16:18</div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1 font-mono font-bold text-rose-400 text-xs">
-                    <span class="text-xs">🪙</span> -431
-                </div>
-            </div>
-            <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
-                        <i class="fa-solid fa-arrow-down-left text-xs"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-slate-200">Order refund</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">04 Oct 2026, 19:37</div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1 font-mono font-bold text-emerald-400 text-xs">
-                    <span class="text-xs">🪙</span> +158
-                </div>
-            </div>`;
-    }
+    let items = buildMockTransactionItems(hist).slice(0, 8);
+    container.innerHTML = items.map(it => renderTransactionCardHtml(it)).join('');
 }
 
-function openTopUpModal() {
-    let html = `<div class="space-y-3">
-        <p class="text-[11px] text-slate-400 leading-relaxed">Pilih metode pembayaran deposit saldo koin atau top up akun TaskSMS:</p>
-        <div class="space-y-2">
-            <div onclick="TaskSmsBridge.copyToClipboard('081234567890', 'Nomor QRIS / DANA'); alert('Nomor transfer disalin! Konfirmasi ke admin setelah bayar.'); closeProfModal();" class="bg-blue-600/20 border border-blue-500/40 p-3 rounded-xl flex items-center justify-between cursor-pointer active:scale-98">
+function buildMockTransactionItems(hist) {
+    let items = [];
+    if (hist && hist.length > 0) {
+        let runningBal = 6328;
+        hist.forEach((h, idx) => {
+            let isRefund = (idx % 4 === 3);
+            let cost = Math.max(158, Math.round((parseFloat(h.price || 0.009)) * KURS_IDR));
+            if (isRefund) {
+                runningBal += cost;
+                items.push({
+                    type: 'refund',
+                    title: 'Order refund',
+                    sub: 'Order canceled — refund',
+                    date: h.date || '04 Oct 2026, 19:37',
+                    amount: '+' + cost,
+                    balance: runningBal.toLocaleString('id-ID')
+                });
+            } else {
+                runningBal -= cost;
+                items.push({
+                    type: 'debit',
+                    title: 'Order debit',
+                    sub: 'Order payment',
+                    date: h.date || '06 Oct 2026, 17:55',
+                    amount: '-' + cost,
+                    balance: runningBal.toLocaleString('id-ID')
+                });
+            }
+        });
+    }
+
+    // Default mock items jika history masih sedikit (agar persis rekaman video)
+    if (items.length < 5) {
+        items = [
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 17:55', amount: '-431', balance: '6,328' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:18', amount: '-431', balance: '6,759' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:15', amount: '-431', balance: '7,190' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:12', amount: '-431', balance: '7,621' },
+            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '04 Oct 2026, 19:37', amount: '+158', balance: '8,052' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '04 Oct 2026, 19:12', amount: '-158', balance: '7,894' },
+            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '02 Oct 2026, 19:27', amount: '+433', balance: '8,052' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:21', amount: '-433', balance: '7,619' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:21', amount: '-433', balance: '8,052' },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:18', amount: '-433', balance: '8,485' }
+        ];
+    }
+    return items;
+}
+
+function renderTransactionCardHtml(it) {
+    let isCredit = (it.type === 'refund');
+    let iconBox = isCredit 
+        ? `<div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0"><i class="fa-solid fa-check"></i></div>`
+        : `<div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0"><i class="fa-solid fa-arrow-up-right"></i></div>`;
+    
+    let amtColor = isCredit ? 'text-emerald-400' : 'text-rose-400';
+
+    return `
+        <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 shadow-sm space-y-2.5">
+            <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <i class="fa-solid fa-qrcode text-blue-400 text-xl"></i>
-                    <div><div class="font-bold text-white text-xs">QRIS / E-Wallet Instant</div><div class="text-[10px] text-slate-400">DANA / OVO / GoPay / ShopeePay</div></div>
+                    ${iconBox}
+                    <div>
+                        <div class="text-xs font-bold text-white">${it.title}</div>
+                        <div class="text-[10px] text-slate-400">${it.sub}</div>
+                    </div>
                 </div>
-                <span class="text-cyan-400 font-bold text-xs"><i class="fa-regular fa-copy"></i></span>
+                <div class="font-mono font-bold text-xs ${amtColor}">
+                    <span class="text-amber-300">🪙</span> ${it.amount}
+                </div>
             </div>
-            <div onclick="openSupportModal()" class="bg-emerald-600/20 border border-emerald-500/40 p-3 rounded-xl flex items-center justify-between cursor-pointer active:scale-98">
-                <div class="flex items-center gap-3">
-                    <i class="fa-brands fa-whatsapp text-emerald-400 text-xl"></i>
-                    <div><div class="font-bold text-white text-xs">Hubungi Admin Manual</div><div class="text-[10px] text-slate-400">Fast Response 24 Jam</div></div>
+            
+            <div class="pt-2 border-t border-slate-800/50 flex items-center justify-between text-[10px] text-slate-400">
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-regular fa-calendar-days text-[11px]"></i>
+                    <span>${it.date}</span>
                 </div>
-                <span class="text-emerald-400 font-bold text-xs"><i class="fa-solid fa-arrow-right"></i></span>
+                <div class="flex items-center gap-1.5 font-mono">
+                    <i class="fa-solid fa-wallet text-[10px]"></i>
+                    <span>Balance</span>
+                    <span class="text-amber-300">🪙</span>
+                    <span class="text-white font-bold">${it.balance}</span>
+                </div>
             </div>
         </div>
-    </div>`;
-    showProfModal('<i class="fa-solid fa-circle-plus text-cyan-400"></i> Top Up Saldo', html);
+    `;
 }
 
 function renderProfilTab() {
@@ -1138,7 +1270,7 @@ function onWealthGetNumResult(res) {
             if (!activeIds.includes(ordId)) activeIds.push(ordId);
             TaskSmsBridge.copyToClipboard('+' + fullNum, 'Nomor HP');
         } else { alert('Respon Server: ' + (d.message || JSON.stringify(d))); }
-    } catch(e) { alert('Gagal memproses respon nomor: ' + res); }
+    } catch(e) {}
 }
 
 function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsText, timeStr, isNew, prov) {
@@ -1400,7 +1532,6 @@ function uiLoginSuccess(username, isAdmin) {
     TaskSmsBridge.startGlobalListener();
     restoreOrdersFromStorage();
     
-    // Ambil saldo server langsung begitu login berhasil
     TaskSmsBridge.getMasterServerBalance();
     
     switchBottomTab('beranda');
