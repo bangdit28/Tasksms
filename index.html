@@ -60,7 +60,7 @@
     <!-- VIEW 1: BERANDA -->
     <div id="view_beranda" class="view-pane space-y-3.5">
         
-        <!-- TOP GREETING & NOTIFIKASI LONCENG (PERSIS SCREENSHOT 1) -->
+        <!-- TOP GREETING & NOTIFIKASI LONCENG -->
         <div class="flex items-center justify-between pt-1 pb-1">
             <div>
                 <h1 class="text-xl font-black text-white tracking-tight flex items-center gap-1">
@@ -198,7 +198,7 @@
         <div id="activeOrders"></div>
     </div>
 
-    <!-- SUBVIEW: NOTIFICATIONS (SESUAI SCREENSHOT 2) -->
+    <!-- SUBVIEW: NOTIFICATIONS -->
     <div id="subview_notifications" class="view-pane space-y-4" style="display: none;">
         <div class="flex items-center justify-between py-1">
             <button onclick="backToHomeFromNotif()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
@@ -424,7 +424,7 @@
         <div class="space-y-2.5 max-h-[65vh] overflow-y-auto custom-scrollbar pr-0.5" id="transactionsFullList"></div>
     </div>
 
-    <!-- SUBVIEW: DEPOSIT -->
+    <!-- SUBVIEW: DEPOSIT (TERKUNCI - HUBUNGI ADMIN & RIWAYAT TRANSFER ASLI) -->
     <div id="subview_deposit" class="view-pane space-y-4" style="display: none;">
         <div class="flex items-center justify-between py-1">
             <button onclick="backToWalletMain()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
@@ -434,75 +434,54 @@
             <div class="w-9"></div>
         </div>
 
-        <div class="bg-[#0B101D] border border-slate-800/80 rounded-3xl p-4 shadow-xl space-y-3.5">
-            <div class="text-xs font-black text-white">New deposit</div>
-            
-            <div class="space-y-1.5">
-                <label class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment method</label>
-                <div class="space-y-1.5" id="depositMethodList">
-                    <div onclick="selectDepositMethod('qris', this)" class="dep-method-item active p-3 rounded-2xl border border-blue-500 bg-blue-500/10 flex items-center justify-between cursor-pointer active:scale-98 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-xs">QR</div>
-                            <div>
-                                <div class="text-xs font-bold text-white">QRIS</div>
-                                <div class="text-[9px] text-slate-400">Min 10,000 • Max 9,000,000</div>
-                            </div>
-                        </div>
-                        <span class="text-[10px] font-mono font-bold bg-slate-800 text-blue-300 px-2 py-0.5 rounded-lg">IDR</span>
-                    </div>
+        <!-- LOCKED CARD: HUBUNGI ADMIN -->
+        <div class="bg-[#0B101D] border border-slate-800/80 rounded-3xl p-5 shadow-xl text-center space-y-3.5">
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-black text-white">Deposit Saldo Terkunci</h3>
+                <p class="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed mt-1">
+                    Pengisian saldo koin akun saat ini hanya dapat diproses langsung oleh Admin. Silakan hubungi admin di bawah untuk melakukan pengisian saldo:
+                </p>
+            </div>
 
-                    <div onclick="selectDepositMethod('ovo', this)" class="dep-method-item p-3 rounded-2xl border border-slate-800 bg-slate-900/60 flex items-center justify-between cursor-pointer active:scale-98 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center font-bold text-xs">OV</div>
-                            <div>
-                                <div class="text-xs font-bold text-white">OVO</div>
-                                <div class="text-[9px] text-slate-400">Min 10,000 • Max 9,000,000</div>
-                            </div>
+            <!-- BUTTONS HUBUNGI ADMIN -->
+            <div class="space-y-2 pt-1 text-left">
+                <div onclick="TaskSmsBridge.copyToClipboard('@TaskSmsSupport', 'Telegram Admin'); alert('Username Telegram Admin disalin: @TaskSmsSupport');" class="p-3 rounded-2xl border border-blue-500/30 bg-blue-600/10 flex items-center justify-between cursor-pointer active:scale-98 transition-all">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center text-lg">
+                            <i class="fa-brands fa-telegram"></i>
                         </div>
-                        <span class="text-[10px] font-mono font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded-lg">IDR</span>
+                        <div>
+                            <div class="text-xs font-bold text-white">Telegram Admin</div>
+                            <div class="text-[10px] text-slate-400">@TaskSmsSupport • Fast Response</div>
+                        </div>
                     </div>
+                    <span class="text-blue-400 font-bold text-xs"><i class="fa-regular fa-copy"></i></span>
+                </div>
 
-                    <div onclick="selectDepositMethod('shopee', this)" class="dep-method-item p-3 rounded-2xl border border-slate-800 bg-slate-900/60 flex items-center justify-between cursor-pointer active:scale-98 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-xl bg-orange-600/20 text-orange-400 flex items-center justify-center font-bold text-xs">SP</div>
-                            <div>
-                                <div class="text-xs font-bold text-white">ShopeePay</div>
-                                <div class="text-[9px] text-slate-400">Min 10,000 • Max 9,000,000</div>
-                            </div>
+                <div onclick="TaskSmsBridge.copyToClipboard('+6281234567890', 'WhatsApp Admin'); alert('Nomor WhatsApp Admin disalin: +6281234567890');" class="p-3 rounded-2xl border border-emerald-500/30 bg-emerald-600/10 flex items-center justify-between cursor-pointer active:scale-98 transition-all">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center text-lg">
+                            <i class="fa-brands fa-whatsapp"></i>
                         </div>
-                        <span class="text-[10px] font-mono font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded-lg">IDR</span>
-                    </div>
-
-                    <div onclick="selectDepositMethod('crypto', this)" class="dep-method-item p-3 rounded-2xl border border-slate-800 bg-slate-900/60 flex items-center justify-between cursor-pointer active:scale-98 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center font-bold text-xs"><i class="fa-brands fa-bitcoin"></i></div>
-                            <div>
-                                <div class="text-xs font-bold text-white">Cryptocurrency</div>
-                                <div class="text-[9px] text-slate-400">Min 50,000</div>
-                            </div>
+                        <div>
+                            <div class="text-xs font-bold text-white">WhatsApp Admin</div>
+                            <div class="text-[10px] text-slate-400">+62 812-xxxx-xxxx • 24 Jam</div>
                         </div>
-                        <span class="text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded-lg">USDT</span>
                     </div>
+                    <span class="text-emerald-400 font-bold text-xs"><i class="fa-regular fa-copy"></i></span>
                 </div>
             </div>
-
-            <div class="bg-blue-950/40 border border-blue-500/30 p-2.5 rounded-xl text-[10px] text-blue-200 flex items-center gap-2">
-                <i class="fa-solid fa-circle-info text-blue-400"></i>
-                <span>🪙 1 coin = 1 IDR • 1 USD = 17,889 coins</span>
-            </div>
-
-            <div class="relative">
-                <span class="absolute left-3.5 top-3 text-base">🪙</span>
-                <input type="number" id="inpDepositAmount" placeholder="Enter amount" class="w-full bg-[#070B14] border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono">
-            </div>
-
-            <button onclick="submitDepositAction()" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider active:scale-95 transition-all shadow-lg shadow-blue-500/20">
-                Create deposit
-            </button>
         </div>
 
+        <!-- RIWAYAT DEPOSIT (MURNI DARI TRANSFER ADMIN) -->
         <div class="space-y-2">
-            <div class="text-xs font-bold text-slate-200 px-1">History</div>
+            <div class="text-xs font-bold text-slate-200 px-1 flex items-center justify-between">
+                <span>History Deposit</span>
+                <span class="text-[10px] text-slate-500 font-normal">Otomatis dari Transfer Admin</span>
+            </div>
             <div class="space-y-2" id="depositHistoryList"></div>
         </div>
     </div>
