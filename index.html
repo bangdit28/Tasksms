@@ -55,27 +55,7 @@
 </div>
 
 <!-- MAIN APP AREA -->
-<div id="mainAppArea" style="display:none;">
-
-    <!-- TOP GLOBAL BAR -->
-    <div class="glass-card p-4 mb-4 flex justify-between items-center relative overflow-hidden">
-        <div>
-            <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <h1 class="text-lg font-black tracking-wider text-white">TASK<span class="text-blue-400">SMS</span></h1>
-                <span id="badgeRole" class="text-[9px] font-bold bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30">MEMBER</span>
-            </div>
-            <div class="text-[10px] text-slate-400 font-medium mt-1 flex items-center gap-2">
-                <span>Hai, <span id="txtUserDisp" class="text-blue-300 font-bold">-</span></span>
-                <span class="bg-slate-800 text-cyan-400 w-6 h-6 rounded-md flex items-center justify-center border border-slate-700 cursor-pointer active:scale-95" title="Riwayat SMS" onclick="switchBottomTab('history')"><i class="fa-solid fa-clock-rotate-left text-[11px]"></i></span>
-                <span class="text-rose-400 cursor-pointer font-bold ml-1" onclick="confirmLogout()">Keluar</span>
-            </div>
-        </div>
-        <div id="serverBalanceCard" style="display:none;" class="text-right bg-slate-900/80 px-3.5 py-2 rounded-xl border border-slate-700/50 cursor-pointer active:scale-95 transition-transform" onclick="onBalanceCardClick()">
-            <div class="text-[9px] text-slate-400 font-bold flex items-center justify-end gap-1"><span>SALDO SERVER</span> <i class="fa-solid fa-arrows-rotate text-cyan-400 text-[10px]"></i></div>
-            <div class="text-sm font-black text-cyan-400 tracking-tight" id="saldoTxt"><i class="fa-solid fa-circle-notch fa-spin"></i> Memuat...</div>
-        </div>
-    </div>
+<div id="mainAppArea" style="display:none;" class="space-y-3.5">
 
     <!-- VIEW 1: BERANDA -->
     <div id="view_beranda" class="view-pane space-y-3.5">
@@ -212,8 +192,10 @@
         </div>
     </div>
 
-    <!-- VIEW 4: DOMPET -->
+    <!-- VIEW 4: DOMPET (DENGAN SALDO SERVER ASLI) -->
     <div id="view_dompet" class="view-pane space-y-4" style="display: none;">
+        
+        <!-- TOP BALANCE CARD (DILENGKAPI SALDO SERVER ASLI & REFRESH) -->
         <div class="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 rounded-3xl p-5 text-white shadow-xl shadow-blue-500/15 relative overflow-hidden">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3.5">
@@ -221,11 +203,15 @@
                         <i class="fa-solid fa-wallet"></i>
                     </div>
                     <div>
-                        <div class="text-[11px] text-blue-100 font-medium">Total balance</div>
+                        <div class="text-[11px] text-blue-100 font-medium flex items-center gap-1.5">
+                            <span>Saldo Server</span>
+                            <i class="fa-solid fa-arrows-rotate text-[10px] cursor-pointer hover:rotate-180 transition-transform active:scale-90" onclick="TaskSmsBridge.getMasterServerBalance()" title="Segarkan Saldo"></i>
+                        </div>
                         <div class="flex items-center gap-1.5 font-black text-xl tracking-tight mt-0.5">
                             <span class="text-amber-300 text-lg">🪙</span>
-                            <span id="dompetTotalBalanceTxt">6,328</span>
+                            <span id="dompetTotalBalanceTxt">$0.000</span>
                         </div>
+                        <div class="text-[10px] text-blue-100 font-mono mt-0.5" id="dompetSubBalanceTxt">~ Rp 0</div>
                     </div>
                 </div>
                 <button onclick="openTopUpModal()" class="bg-white hover:bg-slate-100 text-blue-600 font-black text-xs px-3.5 py-2 rounded-full shadow-md flex items-center gap-1.5 active:scale-95 transition-all">
@@ -234,6 +220,7 @@
                 </button>
             </div>
 
+            <!-- ESTIMASI KURS USD / IDR BAR -->
             <div class="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium text-blue-100">
                 <div class="flex items-center gap-1.5">
                     <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
@@ -288,7 +275,7 @@
                     <div>
                         <div class="flex items-center gap-1.5 font-black text-lg tracking-tight">
                             <span class="text-amber-300 text-base">🪙</span>
-                            <span id="profilCoinTxt">6,328</span>
+                            <span id="profilCoinTxt">$0.000</span>
                         </div>
                         <div class="text-xs text-blue-100 font-medium truncate max-w-[200px]" id="profilUsernameTxt">user@tasksms.com</div>
                     </div>
