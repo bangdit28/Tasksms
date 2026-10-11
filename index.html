@@ -48,7 +48,8 @@
         body.theme-light .bg-slate-900\/80,
         body.theme-light .bg-slate-900\/70,
         body.theme-light .bg-slate-900\/60,
-        body.theme-light .bg-slate-950\/60 {
+        body.theme-light .bg-slate-950\/60,
+        body.theme-light .bg-slate-950\/50 {
             background: #F1F5F9 !important;
             border-color: #E2E8F0 !important;
         }
@@ -233,27 +234,6 @@
         <!-- ACTIVE ORDERS -->
         <div id="activeOrders"></div>
 
-        <!-- LIVE GLOBAL CONSOLE -->
-        <div class="glass-card overflow-hidden border border-blue-500/30">
-            <div class="bg-slate-900/90 p-3 flex justify-between items-center border-b border-slate-800 cursor-pointer select-none" onclick="toggleConsole()">
-                <div class="text-[10px] text-cyan-400 font-black tracking-widest flex items-center">
-                    <i class="fa-solid fa-satellite-dish mr-2 animate-pulse text-blue-400"></i> LIVE GLOBAL SUCCESS
-                </div>
-                <div class="flex items-center gap-3">
-                    <div class="flex gap-1.5">
-                        <div class="w-2 h-2 rounded-full bg-rose-500"></div>
-                        <div class="w-2 h-2 rounded-full bg-amber-500"></div>
-                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    </div>
-                    <i id="consoleIcon" class="fa-solid fa-chevron-down text-cyan-400 text-xs transition-transform duration-300"></i>
-                </div>
-            </div>
-            <div id="liveConsole" class="p-3 overflow-y-auto bg-slate-950/60 custom-scrollbar transition-all duration-300" style="max-height: 190px;">
-                <div id="consoleEmptyText" class="text-slate-500 italic flex items-center justify-center py-6 text-xs font-bold">
-                    <i class="fa-solid fa-circle-notch fa-spin mr-2 text-blue-400"></i> Menunggu aktivitas member...
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- VIEW 2: ORDER HISTORY -->
@@ -276,7 +256,28 @@
         </div>
     </div>
 
-    <!-- VIEW 3: DOMPET -->
+    <!-- VIEW 3: LIVE GLOBAL SUCCESS (NEW DEDICATED TAB) -->
+    <div id="view_live" class="view-pane space-y-3.5" style="display: none;">
+        <div class="glass-card p-4 border border-blue-500/30">
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <h2 class="text-sm font-black text-cyan-400 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-satellite-dish text-blue-400"></i> LIVE GLOBAL SUCCESS
+                    </h2>
+                </div>
+                <span class="text-[9px] bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">STREAM LIVE</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Aktivitas pesanan member yang berhasil mendapatkan SMS verifikasi Facebook secara real-time:</p>
+            <div id="liveConsole" class="space-y-2 max-h-[65vh] overflow-y-auto bg-slate-950/50 p-2.5 rounded-2xl border border-slate-800/80 custom-scrollbar">
+                <div id="consoleEmptyText" class="text-slate-500 italic flex items-center justify-center py-10 text-xs font-bold">
+                    <i class="fa-solid fa-circle-notch fa-spin mr-2 text-blue-400"></i> Menunggu aktivitas member...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 4: DOMPET -->
     <div id="view_dompet" class="view-pane space-y-3.5" style="display: none;">
         <div class="glass-card p-5 border border-cyan-500/30 relative overflow-hidden">
             <div class="flex justify-between items-start mb-3">
@@ -313,7 +314,7 @@
         </div>
     </div>
 
-    <!-- VIEW 4: PROFIL (INTERAKTIF & REAL FUNCTION) -->
+    <!-- VIEW 5: PROFIL -->
     <div id="view_profil" class="view-pane space-y-4" style="display: none;">
         
         <!-- TOP BLUE PROFILE CARD -->
@@ -498,22 +499,27 @@
 
 </div>
 
-<!-- BOTTOM NAVIGATION BAR -->
-<div id="bottomNavBar" style="display:none;" class="fixed bottom-0 left-0 right-0 z-40 bg-[#0D1424]/95 backdrop-blur-md border-t border-slate-800 px-3 py-2 flex justify-around items-center select-none shadow-2xl">
-    <button id="nav_beranda" onclick="switchBottomTab('beranda')" class="nav-item flex flex-col items-center justify-center text-cyan-400 transition-colors w-16 py-1">
-        <i class="fa-solid fa-house text-base mb-1"></i>
+<!-- BOTTOM NAVIGATION BAR (5 MENU: BERANDA, HISTORY, LIVE GLOBAL, DOMPET, PROFIL) -->
+<div id="bottomNavBar" style="display:none;" class="fixed bottom-0 left-0 right-0 z-40 bg-[#0D1424]/95 backdrop-blur-md border-t border-slate-800 px-1.5 py-2 flex justify-between items-center select-none shadow-2xl">
+    <button id="nav_beranda" onclick="switchBottomTab('beranda')" class="nav-item flex-1 flex flex-col items-center justify-center text-cyan-400 transition-colors py-1">
+        <i class="fa-solid fa-house text-sm mb-1"></i>
         <span class="text-[9px] font-bold tracking-tight">Beranda</span>
     </button>
-    <button id="nav_history" onclick="switchBottomTab('history')" class="nav-item flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors w-16 py-1">
-        <i class="fa-solid fa-clock-rotate-left text-base mb-1"></i>
+    <button id="nav_history" onclick="switchBottomTab('history')" class="nav-item flex-1 flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors py-1">
+        <i class="fa-solid fa-clock-rotate-left text-sm mb-1"></i>
         <span class="text-[9px] font-bold tracking-tight">History</span>
     </button>
-    <button id="nav_dompet" onclick="switchBottomTab('dompet')" class="nav-item flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors w-16 py-1">
-        <i class="fa-solid fa-wallet text-base mb-1"></i>
+    <button id="nav_live" onclick="switchBottomTab('live')" class="nav-item flex-1 flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors py-1 relative">
+        <span class="absolute top-0.5 right-4 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+        <i class="fa-solid fa-satellite-dish text-sm mb-1 text-blue-400"></i>
+        <span class="text-[9px] font-bold tracking-tight text-blue-400">Live</span>
+    </button>
+    <button id="nav_dompet" onclick="switchBottomTab('dompet')" class="nav-item flex-1 flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors py-1">
+        <i class="fa-solid fa-wallet text-sm mb-1"></i>
         <span class="text-[9px] font-bold tracking-tight">Dompet</span>
     </button>
-    <button id="nav_profil" onclick="switchBottomTab('profil')" class="nav-item flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors w-16 py-1">
-        <i class="fa-solid fa-user text-base mb-1"></i>
+    <button id="nav_profil" onclick="switchBottomTab('profil')" class="nav-item flex-1 flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors py-1">
+        <i class="fa-solid fa-user text-sm mb-1"></i>
         <span class="text-[9px] font-bold tracking-tight">Profil</span>
     </button>
 </div>
@@ -528,7 +534,7 @@ let selectedOperatorSlug = ''; let selectedOperatorLabel = 'ANY';
 let liveCountryMap = {};
 let curPriceStr = '0.009'; let curPriceNum = 0.009;
 let activeIds = []; let currentPollingId = null; let isFetchingStatus = false;
-let taskOrders = {}; let consoleExpanded = false; let KURS_IDR = 16000;
+let taskOrders = {}; let KURS_IDR = 16000;
 let currentHistPage = 1; const HIST_PER_PAGE = 10;
 let isDropdownOpen = false;
 
@@ -1672,12 +1678,6 @@ function renderTabHistory(page) {
 
 function showTaskHistory(page) { switchBottomTab('history'); }
 function closeTaskHistory() { document.getElementById('taskHistModal').classList.add('hidden'); }
-
-function toggleConsole() {
-    let c = document.getElementById('liveConsole'); let i = document.getElementById('consoleIcon');
-    if(consoleExpanded) { c.style.maxHeight = '190px'; i.style.transform = 'rotate(0deg)'; consoleExpanded = false; }
-    else { c.style.maxHeight = '55vh'; i.style.transform = 'rotate(180deg)'; consoleExpanded = true; }
-}
 
 function appendConsoleLog(jsonStr) {
     let container = document.getElementById('liveConsole');
