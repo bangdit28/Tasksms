@@ -434,7 +434,6 @@ function renderHomeHeader() {
 
     let rateEl = document.getElementById('homeSuccessRate');
     if (rateEl) {
-        // Hitung persentase real: berhasil / total transaksi
         let rate = hist.length > 0 ? '100%' : '0%';
         rateEl.innerText = rate + ' ' + t('success_rate');
     }
@@ -588,12 +587,10 @@ function deductMemberBalance(coinAmount) {
     checkMemberBalanceState();
 }
 
-// POINT 6: STEXSMS TETAP BISA DIAMBIL WALAUPUN SALDO MEMBER 0
 function checkMemberBalanceState() {
     let btn = document.getElementById('btnBuy');
     if (!btn) return;
 
-    // JIKA PROVIDER STEXSMS / LUAR NEGERI (FREE POOL): SELALU AKTIF MESKI SALDO 0!
     if (currentProvider === 'wealthora' || selectedCountryCode !== 'id') {
         btn.disabled = false;
         btn.className = 'glow-btn w-full text-white font-black py-3 rounded-xl text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2';
@@ -705,7 +702,7 @@ function handleRefreshSaldo() {
 }
 
 // -------------------------------------------------------------
-// POINT 5: MODAL TRANSFER KHUSUS ADMIN DENGAN LIVE KALKULATOR
+// MODAL TRANSFER KHUSUS ADMIN DENGAN LIVE KALKULATOR
 // -------------------------------------------------------------
 function handleMainWalletAction() {
     if (isAdminUser) {
@@ -741,7 +738,6 @@ function openAdminTransferModal() {
                 <input type="number" step="0.001" id="inpTransferUsd" oninput="calculateTransferFromUsd(this.value)" class="auth-input mt-1 font-mono text-cyan-300 font-bold" placeholder="Contoh: 0.01">
             </div>
             
-            <!-- KALKULATOR LIVE CONVERTER -->
             <div class="calc-preview-box">
                 <div class="flex justify-between items-center text-[10px] text-slate-400">
                     <span>Hasil Konversi Real-Time:</span>
@@ -775,12 +771,10 @@ function submitAdminTransferAction() {
     if (!target) return alert('Username member tujuan wajib diisi!');
     if (amtCoin <= 0) return alert('Nominal harus lebih dari 0!');
 
-    // 1. Tambah saldo koin member
     let curBal = getMemberCoinBalance(target);
     let nextBal = curBal + amtCoin;
     setMemberCoinBalance(target, nextBal);
 
-    // 2. Catat ke riwayat deposit member penerima
     let targetDepHist = getUserDepositHistory(target);
     let dateObj = new Date();
     let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
@@ -850,7 +844,7 @@ function renderDepositHistory() {
 }
 
 // -------------------------------------------------------------
-// RENDER ORDERS TAB (MURNI DATA REAL)
+// RENDER ORDERS TAB
 // -------------------------------------------------------------
 function renderOrdersTab() {
     closeOrderDetailView();
@@ -909,7 +903,6 @@ function filterOrdersTab(tab) {
     container.innerHTML = filtered.map(o => renderOrderCardHtml(o)).join('');
 }
 
-// POINT 2 & 4: HAPUS FORMAT KATA BUATAN, GUNAKAN DATA MURNI
 function buildUnifiedOrdersList() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let list = [];
@@ -1583,6 +1576,7 @@ setInterval(() => {
     }
 }, 1000);
 
+// POLLING STATUS DENGAN INBOX VAK V1 (FULL SMS & MULTI SMS)
 setInterval(() => {
     let orderKeys = Object.keys(taskOrders);
     if (orderKeys.length > 0) {
@@ -1596,9 +1590,14 @@ setInterval(() => {
         if (activeIds.length > 0 && !isFetchingStatus) {
             currentPollingId = activeIds.shift();
             activeIds.push(currentPollingId);
-            if(taskOrders[currentPollingId] && taskOrders[currentPollingId].provider !== 'wealthora') {
-                isFetchingStatus = true;
-                TaskSmsBridge.getSmsCode(currentPollingId);
+            if(taskOrders[currentPollingId]) {
+                if (taskOrders[currentPollingId].provider === 'vak') {
+                    isFetchingStatus = true;
+                    // Ambil teks lengkap dari endpoint /v1/user/sms/inbox/{id}
+                    TaskSmsBridge.getVakSmsInbox(currentPollingId);
+                    // Backup via query cepat
+                    TaskSmsBridge.getSmsCode(currentPollingId);
+                }
             }
         }
     }
@@ -1617,7 +1616,6 @@ function onWorkerDataResult(res) {
                 }
             }
             if (ord && item.smsCode) {
-                // POINT 4: Gunakan teks asli respons, jangan kalimat karangan
                 let realMsg = item.smsText || item.text || ('OTP: ' + item.smsCode);
                 applyReceivedSms(targetId, String(item.smsCode).trim(), realMsg);
             }
@@ -1625,7 +1623,39 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
-// POINT 4: SMS ASLI DARI SERVER VAK-SMS (TANPA FORMAT KARANGAN)
+// HANDLER VAK-SMS V1 FULL INBOX (BACA TEKS ASLI LENGKAP & KODE TERBARU)
+function onVakInboxResult(id, base64Res) {
+    isFetchingStatus = false;
+    try {
+        let jsonStr = decodeURIComponent(escape(atob(base64Res)));
+        let d = JSON.parse(jsonStr);
+        let list = [];
+        if (Array.isArray(d)) list = d;
+        else if (d.sms && Array.isArray(d.sms)) list = d.sms;
+        else if (d.data && Array.isArray(d.data)) list = d.data;
+        else if (d.inbox && Array.isArray(d.inbox)) list = d.inbox;
+        else if (typeof d === 'object') {
+            for (let k in d) {
+                if (Array.isArray(d[k])) { list = d[k]; break; }
+            }
+        }
+
+        if (list.length > 0) {
+            // Ambil item SMS yang paling terbaru
+            let lastItem = list[list.length - 1];
+            let code = String(lastItem.code || lastItem.otp || lastItem.smsCode || '').trim();
+            let text = lastItem.text || lastItem.sms || lastItem.message || lastItem.body || ('OTP: ' + code);
+            if (!code && text) {
+                let match = text.match(/\b\d{4,8}\b/);
+                if (match) code = match[0];
+            }
+            if (code) {
+                applyReceivedSms(id, code, text);
+            }
+        }
+    } catch(e) {}
+}
+
 function onGetSmsCodeResult(res) {
     let id = currentPollingId; isFetchingStatus = false; if(!id) return;
     try {
@@ -1633,7 +1663,6 @@ function onGetSmsCodeResult(res) {
         if (d && (d.smsCode || d.code)) {
             let raw = d.smsCode || d.code;
             let code = Array.isArray(raw) ? String(raw[raw.length - 1]).trim() : String(raw).trim();
-            // Ambil text asli dari server jika ada, jika tidak ada, gunakan kodenya murni
             let realText = d.smsText || d.text || ('OTP: ' + code);
             applyReceivedSms(id, code, realText);
         }
@@ -1670,23 +1699,32 @@ function onWealthSuccessOtpResult(res) {
     } catch(e) {}
 }
 
+// LOGIKA UTAMA: MULTI SMS (SMS KE-1, 2, 3, 4, DST) DENGAN MENJAGA KODE SEBELUMNYA TETAP MUNCUL
 function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
     let ord = taskOrders[id]; if (!ord) return;
-    let otpBox = document.getElementById('otp_' + id);
-    let smsTextBox = document.getElementById('smsText_' + id);
-    let badge = document.getElementById('badge_' + id);
-    let copyBtn = document.getElementById('copy_otp_btn_' + id);
 
-    if (ord.smsCount === 0 || ord.otp !== code) {
-        ord.smsCount += 1;
+    // HANYA EKSEKUSI JIKA KODE BARU BERBEDA DENGAN KODE YANG TERAKHIR TAMPIL
+    // (Selama menunggu SMS ke-2/3/4, kode sebelumnya TETAP UTUH DI LAYAR!)
+    if (ord.otp !== code) {
+        let isNextSms = (ord.otp !== null && ord.otp !== undefined && ord.otp !== '' && ord.otp !== code);
+        ord.smsCount = (ord.smsCount || 0) + 1;
         ord.otp = code;
         ord.smsText = fullText;
         persistOrders();
 
+        let otpBox = document.getElementById('otp_' + id);
+        let smsTextBox = document.getElementById('smsText_' + id);
+        let badge = document.getElementById('badge_' + id);
+        let copyBtn = document.getElementById('copy_otp_btn_' + id);
+
+        // Perbarui tampilan ke kode dan teks SMS yang baru masuk
         if (otpBox) otpBox.innerText = code;
         if (smsTextBox) smsTextBox.innerText = fullText;
-        if (badge) { badge.innerText = 'OTP RECEIVED'; badge.className = 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 text-[9px] font-black px-2 py-0.5 rounded'; }
+        if (badge) { 
+            badge.innerText = isNextSms ? ('OTP #' + ord.smsCount + ' RECEIVED') : 'OTP RECEIVED'; 
+            badge.className = 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 text-[9px] font-black px-2 py-0.5 rounded'; 
+        }
         if (copyBtn) copyBtn.classList.remove('opacity-30');
         let btnF = document.getElementById('btnFinish_' + id); if (btnF) btnF.style.display = 'block';
 
@@ -1694,15 +1732,16 @@ function applyReceivedSms(id, code, fullText) {
         try { navigator.vibrate([150, 80, 150]); } catch(e){}
         try { TaskSmsBridge.showOtpNotification(code, fullText); } catch(e){}
 
-        pushNewNotification('Facebook — OTP Received', 'Order #' + id + ' (' + (ord.ctry || 'Indonesia') + ')', id);
+        pushNewNotification('Facebook — OTP Received', 'Order #' + id + ' (' + (ord.ctry || 'Indonesia') + ') : ' + code, id);
 
         saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, fullText);
         TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
-        if (ord.provider === 'vak' && !ord.autoRequestedSecond) {
-            ord.autoRequestedSecond = true;
-            persistOrders();
-            setTimeout(() => { TaskSmsBridge.setStatus(id, 'send'); }, 1500);
+        // AUTO-MINTA SMS BERIKUTNYA KE SERVER VAK-SMS (BISA KE-2, 3, 4, BERAPA KALI PUN)
+        if (ord.provider === 'vak') {
+            setTimeout(() => { 
+                TaskSmsBridge.setStatus(id, 'send'); 
+            }, 1800);
         }
     }
 }
@@ -1802,7 +1841,6 @@ function selectCountryId() {
     document.getElementById('operatorSection').style.display = 'block';
     document.getElementById('selPriceLabelTxt').innerText = t('price_label');
     
-    // Tampilkan status memeriksa sampai respon API tiba
     if (curPriceNum > 0) {
         document.getElementById('selProviderBadge').innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + formatRupiahOnly(curPriceNum) + ')</span>';
     } else {
@@ -1813,7 +1851,6 @@ function selectCountryId() {
     queryRealtimeStockVak();
 }
 
-// POINT 6: SELECT LIVESTEXSMS NEGARA BEBAS SALDO
 function selectLiveCountry(code) {
     let item = liveCountryMap[code]; if(!item) return;
     selectedCountryCode = code;
@@ -1839,7 +1876,6 @@ function selectLiveCountry(code) {
     document.getElementById('selTargetTxt').innerHTML = `${getFlagImgHtml(item.iso, item.name, 18)} <span>${item.name}</span> <span class="text-[10px] bg-slate-800 text-emerald-400 px-1.5 py-0.5 rounded border border-slate-700 uppercase font-mono">+${code}</span>`;
     document.getElementById('selRealtimeStock').innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Pool Ready</span>`;
 
-    // Tombol langsung aktif meskipun saldo member kosong!
     checkMemberBalanceState();
 }
 
@@ -1893,7 +1929,6 @@ function queryRealtimeStockVak() {
     TaskSmsBridge.getCountNumber('fb', 'id', selectedOperatorSlug);
 }
 
-// POINT 3: HARGA NOMOR DIBACA DINAMIS MURNI DARI RESPON API VAK-SMS
 function onGetCountNumberResult(res) {
     if (selectedCountryCode !== 'id') return;
     let stockTxt = document.getElementById('selRealtimeStock');
@@ -1905,7 +1940,6 @@ function onGetCountNumberResult(res) {
         if (typeof d === 'object') {
             count = (d.count !== undefined) ? d.count : (d['fb'] !== undefined ? d['fb'] : 0);
             
-            // Perbarui harga murni dari API
             if (d.price !== undefined && d.price !== null) {
                 curPriceNum = parseFloat(d.price) || 0;
                 curPriceStr = String(d.price);
@@ -1933,9 +1967,7 @@ function onGetCountNumberResult(res) {
     }
 }
 
-// POINT 6: CEK SALDO HANYA DIJALANKAN UNTUK PROVIDER BERBAYAR (VAK)
 function executeOrderNow() {
-    // StexSMS (Pool Luar Negeri) BEBAS DARI CEK SALDO:
     if (currentProvider === 'vak') {
         let orderCostCoins = Math.round(curPriceNum * KURS_IDR);
         if (!isAdminUser && getMemberCoinBalance() < orderCostCoins) {
@@ -1978,7 +2010,6 @@ function onGetNumberResult(res) {
                 otp: null,
                 smsText: 'Menunggu SMS masuk dari server...',
                 provider: 'vak',
-                autoRequestedSecond: false,
                 smsCount: 0
             };
             persistOrders();
@@ -2148,6 +2179,7 @@ function finishOrder(id) {
     let el = document.getElementById('order_' + id); if(el) el.remove();
 }
 
+// SIMPAN SEMUA KODE OTP YANG DIDAPAT KE RIWAYAT (PISAH DENGAN KOMA)
 function saveToTaskHistory(svc, ctry, num, code, price, id, opTag, fullText) {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let dateObj = new Date();
@@ -2259,5 +2291,5 @@ function uiLoginSuccess(username, isAdmin) {
 
 function confirmLogout() { 
     let msg = (currentAppLang === 'en') ? 'Are you sure you want to sign out?' : 'Yakin ingin keluar?';
-    if(confirm(msg)) TaskSmsBridge.doLogout();
+    if(confirm(msg)) TaskSmsBridge.doLogout(); 
 }
