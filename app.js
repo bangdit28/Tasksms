@@ -18,6 +18,7 @@ let KURS_IDR = 17889;
 let currentHistPage = 1; 
 const HIST_PER_PAGE = 10;
 let isDropdownOpen = false;
+let lastServerBalanceUsd = 0;
 
 const DIAL_MAP = {
     '1':   { name: 'USA/Canada', iso: 'us' },
@@ -194,13 +195,41 @@ function switchBottomTab(tab) {
     }
 }
 
+function updateAllBalanceUI(val) {
+    let rpStr = formatRupiahOnly(val);
+    
+    // Sinkronisasi ke Tab Dompet
+    let dompetBal = document.getElementById('dompetTotalBalanceTxt');
+    let dompetSub = document.getElementById('dompetSubBalanceTxt');
+    if (dompetBal) {
+        dompetBal.innerText = '$' + val.toFixed(3);
+    }
+    if (dompetSub) {
+        dompetSub.innerText = '~ ' + rpStr;
+    }
+
+    // Sinkronisasi ke Tab Profil
+    let profCoin = document.getElementById('profilCoinTxt');
+    if (profCoin) {
+        profCoin.innerText = '$' + val.toFixed(3);
+    }
+}
+
+function onGetMasterBalanceResult(res) {
+    try {
+        let d = JSON.parse(res);
+        let val = parseFloat(d.balance !== undefined ? d.balance : d) || 0;
+        lastServerBalanceUsd = val;
+        updateAllBalanceUI(val);
+    } catch(e) {}
+}
+
 function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
-    let totalBalEl = document.getElementById('dompetTotalBalanceTxt');
-    if (totalBalEl) {
-        let coinVal = hist.length > 0 ? (hist.length * 18).toLocaleString('id-ID') : '6,328';
-        totalBalEl.innerText = coinVal;
-    }
+    
+    // Perbarui saldo secara live dari server
+    TaskSmsBridge.getMasterServerBalance();
+    updateAllBalanceUI(lastServerBalanceUsd);
 
     let dKurs = document.getElementById('dompetKursTxt');
     if(dKurs) dKurs.innerText = '$1.00 ≈ ' + formatRupiahOnly(1);
@@ -295,20 +324,6 @@ function renderDompetRecentActivity(hist) {
                 <div class="flex items-center gap-1 font-mono font-bold text-emerald-400 text-xs">
                     <span class="text-xs">🪙</span> +158
                 </div>
-            </div>
-            <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0">
-                        <i class="fa-solid fa-arrow-up-right text-xs"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-slate-200">Order debit</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">04 Oct 2026, 19:12</div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1 font-mono font-bold text-rose-400 text-xs">
-                    <span class="text-xs">🪙</span> -158
-                </div>
             </div>`;
     }
 }
@@ -346,10 +361,9 @@ function renderProfilTab() {
     let ordEl = document.getElementById('profilTotalOrdersCard');
     if (ordEl) ordEl.innerText = hist.length + ' Total Orders';
 
-    let coinEl = document.getElementById('profilCoinTxt');
-    if (coinEl) {
-        let coinVal = hist.length > 0 ? (hist.length * 18).toLocaleString('id-ID') : '6,328';
-        coinEl.innerText = coinVal;
+    let profCoin = document.getElementById('profilCoinTxt');
+    if (profCoin) {
+        profCoin.innerText = '$' + lastServerBalanceUsd.toFixed(3);
     }
 
     let pushState = TaskSmsBridge.getUserPref('push_notif_enabled', 'true');
@@ -384,8 +398,8 @@ function openAccountDetailModal() {
         <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
             <div class="flex justify-between items-center"><span class="text-slate-400">Username</span> <span class="font-bold text-white">${activeUser}</span></div>
             <div class="flex justify-between items-center"><span class="text-slate-400">Role</span> <span class="font-bold text-cyan-400">${roleName}</span></div>
+            <div class="flex justify-between items-center"><span class="text-slate-400">Saldo Server</span> <span class="font-bold text-cyan-300 font-mono">$${lastServerBalanceUsd.toFixed(3)} (${formatRupiahOnly(lastServerBalanceUsd)})</span></div>
             <div class="flex justify-between items-center"><span class="text-slate-400">Total Transaksi</span> <span class="font-bold text-emerald-400">${hist.length} Order</span></div>
-            <div class="flex justify-between items-center"><span class="text-slate-400">Total Pengeluaran</span> <span class="font-bold text-cyan-300 font-mono">${formatRupiahOnly(totalUsd)}</span></div>
         </div>
         <button onclick="TaskSmsBridge.copyToClipboard('${activeUser}', 'Username'); closeProfModal();" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center gap-2">
             <i class="fa-regular fa-copy"></i> Salin Username
@@ -1051,7 +1065,7 @@ function onGetNumberResult(res) {
             persistOrders();
             renderOrderCardUI(d.idNum, d.tel, curPriceNum, selectedOperatorLabel.toUpperCase(), null, 'Menunggu SMS masuk dari server...', timeStr, true, 'vak');
             activeIds.push(d.idNum);
-            if (isAdminUser) { TaskSmsBridge.getMasterServerBalance(); }
+            TaskSmsBridge.getMasterServerBalance();
         } else if(d.error) {
             if(d.error === 'noNumbers') alert('Nomor habis untuk pilihan ini.');
             else alert('Gagal: ' + d.error);
@@ -1170,7 +1184,7 @@ function cancelOrder(id) {
     persistOrders();
     activeIds = activeIds.filter(item => item !== id);
     let el = document.getElementById('order_' + id); if(el) el.remove();
-    if (isAdminUser) { setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200); }
+    setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
 }
 
 function banOrder(id) {
@@ -1187,7 +1201,7 @@ function onBanVakResult(id, res) {
     persistOrders();
     activeIds = activeIds.filter(item => item !== id);
     let el = document.getElementById('order_' + id); if(el) el.remove();
-    if (isAdminUser) { setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200); }
+    setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
 }
 
 function onCancelVakResult(id, res) {}
@@ -1315,20 +1329,6 @@ function appendConsoleLog(jsonStr) {
     } catch(e) {}
 }
 
-function onGetMasterBalanceResult(res) {
-    try {
-        let d = JSON.parse(res);
-        let val = parseFloat(d.balance !== undefined ? d.balance : d) || 0;
-        document.getElementById('saldoTxt').innerHTML = '$' + val.toFixed(3) + ' <span class="text-[9px] text-slate-400 font-normal">(' + formatRupiahOnly(val) + ')</span>';
-    } catch(e) {}
-}
-
-function onBalanceCardClick() {
-    if(!isAdminUser) return;
-    document.getElementById('saldoTxt').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Memuat...';
-    TaskSmsBridge.getMasterServerBalance();
-}
-
 function switchTab(mode) {
     authMode = mode;
     document.getElementById('inpUser').value = ''; 
@@ -1362,26 +1362,21 @@ function uiShowAuth() {
 }
 
 function uiLoginSuccess(username, isAdmin) {
-    activeUser = username; isAdminUser = isAdmin;
+    activeUser = username; 
+    isAdminUser = isAdmin;
     document.getElementById('authArea').style.display = 'none';
     document.getElementById('mainAppArea').style.display = 'block';
     document.getElementById('bottomNavBar').style.display = 'flex';
-    document.getElementById('txtUserDisp').innerText = username;
-    let salCard = document.getElementById('serverBalanceCard');
-    if(isAdmin) {
-        document.getElementById('badgeRole').innerText = 'OWNER / MASTER';
-        document.getElementById('badgeRole').className = 'text-[9px] font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30';
-        salCard.style.display = 'block';
-    } else {
-        document.getElementById('badgeRole').innerText = 'MEMBER';
-        salCard.style.display = 'none';
-    }
 
     renderOperatorButtons();
     selectCountryId();
     TaskSmsBridge.getWealthLiveAccess();
     TaskSmsBridge.startGlobalListener();
     restoreOrdersFromStorage();
+    
+    // Ambil saldo server langsung begitu login berhasil
+    TaskSmsBridge.getMasterServerBalance();
+    
     switchBottomTab('beranda');
 }
 
