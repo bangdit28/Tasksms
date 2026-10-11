@@ -89,25 +89,42 @@ body {
     background: rgba(6,182,212,0.08); 
 }
 
-/* THEME TERANG / SIANG */
+/* ========================================================= */
+/* TEMA TERANG / SIANG (FULL HIGH CONTRAST & CLEAN DESIGN)  */
+/* ========================================================= */
 body.theme-light {
     background: #F8FAFC !important;
     color: #0F172A !important;
 }
 
+/* KARTU & PANEL UTAMA */
 body.theme-light .glass-card,
 body.theme-light #countryDropdownTrigger,
 body.theme-light #countryDropdownMenu,
-body.theme-light .op-pill,
-body.theme-light .bg-\[\#0D1424\],
 body.theme-light .bg-\[\#0A101D\],
-body.theme-light .bg-\[\#0B101D\] {
+body.theme-light .bg-\[\#0B101D\],
+body.theme-light .bg-\[\#0D1424\] {
     background: #FFFFFF !important;
     border-color: #E2E8F0 !important;
+    box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.05) !important;
     color: #0F172A !important;
-    box-shadow: 0 4px 20px -2px rgba(0,0,0,0.06) !important;
 }
 
+/* SUB-KARTU & DAFTAR RIWAYAT */
+body.theme-light .bg-slate-900,
+body.theme-light .bg-slate-900\/90,
+body.theme-light .bg-slate-900\/80,
+body.theme-light .bg-slate-900\/70,
+body.theme-light .bg-slate-900\/60,
+body.theme-light .bg-slate-950\/60,
+body.theme-light .bg-slate-950\/50,
+body.theme-light .bg-\[\#070B14\] {
+    background: #F1F5F9 !important;
+    border-color: #E2E8F0 !important;
+    color: #0F172A !important;
+}
+
+/* WARNA TEKS DIBIKIN PEKAT & ENAK DIBACA */
 body.theme-light .text-white { 
     color: #0F172A !important; 
 }
@@ -122,22 +139,150 @@ body.theme-light .text-slate-500 {
     color: #64748B !important; 
 }
 
-body.theme-light .bg-slate-900,
-body.theme-light .bg-slate-900\/90,
-body.theme-light .bg-slate-900\/80,
-body.theme-light .bg-slate-900\/70,
-body.theme-light .bg-slate-900\/60,
-body.theme-light .bg-slate-950\/60,
-body.theme-light .bg-slate-950\/50 {
-    background: #F1F5F9 !important;
+/* TEKS BIRU / CYAN JADI LEBIH TAJAM (TIDAK PUCAT) */
+body.theme-light .text-cyan-400,
+body.theme-light .text-cyan-300 { 
+    color: #0284C7 !important; 
+}
+
+body.theme-light .text-blue-400,
+body.theme-light .text-blue-300 { 
+    color: #2563EB !important; 
+}
+
+body.theme-light .text-emerald-400 {
+    color: #059669 !important;
+}
+
+/* BADGE NEGARA, OPERATOR, DAN LAYANAN */
+body.theme-light .bg-slate-800 {
+    background: #E2E8F0 !important;
+    border-color: #CBD5E1 !important;
+    color: #1E293B !important;
+}
+
+body.theme-light .bg-blue-950,
+body.theme-light .bg-blue-950\/80 {
+    background: #EFF6FF !important;
+    border-color: #BFDBFE !important;
+    color: #1D4ED8 !important;
+}
+
+body.theme-light .bg-cyan-950,
+body.theme-light .bg-cyan-950\/80 {
+    background: #ECFEFF !important;
+    border-color: #A5F3FC !important;
+    color: #0E7490 !important;
+}
+
+body.theme-light .bg-emerald-950,
+body.theme-light .bg-emerald-950\/80 {
+    background: #ECFDF5 !important;
+    border-color: #A7F3D0 !important;
+    color: #047857 !important;
+}
+
+/* KOTAK KODE OTP DI RIWAYAT */
+body.theme-light .border-dashed {
+    background: #F0F9FF !important;
+    border-color: #0284C7 !important;
+    color: #0369A1 !important;
+    font-weight: 800 !important;
+}
+
+/* TOMBOL PAGINATION RIWAYAT */
+body.theme-light #tabHistPagination button,
+body.theme-light #taskPagination button {
+    background: #FFFFFF !important;
+    border-color: #CBD5E1 !important;
+    color: #334155 !important;
+}
+
+body.theme-light #tabHistPagination button.bg-blue-600,
+body.theme-light #taskPagination button.bg-blue-600 {
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+    border-color: #2563EB !important;
+}
+
+/* OPERATOR PILL (BERANDA) */
+body.theme-light .op-pill {
+    background: #FFFFFF !important;
+    border-color: #CBD5E1 !important;
+    color: #1E293B !important;
+}
+
+body.theme-light .op-pill.active {
+    background: #F0F9FF !important;
+    border-color: #0284C7 !important;
+    color: #0284C7 !important;
+}
+
+body.theme-light .op-pill span {
+    color: #1E293B !important;
+}
+
+body.theme-light .op-pill.active span {
+    color: #0284C7 !important;
+}
+
+/* BADGE OWNER / MEMBER */
+body.theme-light #badgeRole,
+body.theme-light #profilBadgeRole {
+    background: #FEF3C7 !important;
+    border-color: #FCD34D !important;
+    color: #92400E !important;
+}
+
+body.theme-light .bg-cyan-500\/20 {
+    background: #E0F2FE !important;
+    border-color: #BAE6FD !important;
+    color: #0369A1 !important;
+}
+
+/* KARTU SALDO SERVER DI ATAS */
+body.theme-light #serverBalanceCard {
+    background: #FFFFFF !important;
     border-color: #E2E8F0 !important;
 }
 
+/* NAVIGASI BAWAH */
 body.theme-light #bottomNavBar {
-    background: rgba(255, 255, 255, 0.95) !important;
+    background: rgba(255, 255, 255, 0.96) !important;
     border-top-color: #E2E8F0 !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05) !important;
 }
 
+body.theme-light .nav-item.text-slate-400 {
+    color: #64748B !important;
+}
+
+body.theme-light .nav-item.text-cyan-400 {
+    color: #0284C7 !important;
+}
+
+/* KARTU GRADASI BIRU (TETAP PUTIH TULISANNYA AGAR TETAP MEWAH) */
+body.theme-light .bg-gradient-to-r.from-blue-600 {
+    color: #FFFFFF !important;
+}
+
+body.theme-light .bg-gradient-to-r.from-blue-600 * {
+    color: inherit;
+}
+
+body.theme-light .bg-gradient-to-r.from-blue-600 .text-blue-100 {
+    color: #DBEAFE !important;
+}
+
+body.theme-light .bg-gradient-to-r.from-blue-600 .text-blue-600 {
+    color: #2563EB !important;
+}
+
+body.theme-light .bg-gradient-to-r.from-blue-600 .text-amber-300 {
+    color: #FCD34D !important;
+}
+
+/* INPUT LOGIN / DAFTAR */
 body.theme-light .auth-input {
     background: #FFFFFF !important;
     border-color: #CBD5E1 !important;
