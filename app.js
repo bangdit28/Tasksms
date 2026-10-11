@@ -190,7 +190,9 @@ function switchBottomTab(tab) {
         targetNav.classList.add('text-cyan-400');
     }
 
-    if (tab === 'history') {
+    if (tab === 'beranda') {
+        checkMemberBalanceState();
+    } else if (tab === 'history') {
         renderOrdersTab();
     } else if (tab === 'dompet') {
         renderDompetTab();
@@ -199,8 +201,59 @@ function switchBottomTab(tab) {
     }
 }
 
-// TOGGLE MATA UANG SALDO & RECENT ACTIVITY (USD ⇄ IDR/KOIN)
+// -------------------------------------------------------------
+// SISTEM SALDO: MEMBER COINS VS ADMIN SERVER BALANCE
+// -------------------------------------------------------------
+function getMemberCoinBalance(user) {
+    let u = user || activeUser;
+    if (!u) return 0;
+    let local = localStorage.getItem('member_coins_' + u);
+    if (local !== null) return parseInt(local) || 0;
+    return parseInt(TaskSmsBridge.getUserPref('my_coins', '0')) || 0;
+}
+
+function setMemberCoinBalance(user, amount) {
+    let u = user || activeUser;
+    if (!u) return;
+    localStorage.setItem('member_coins_' + u, amount);
+    if (u === activeUser) {
+        TaskSmsBridge.saveUserPref('my_coins', String(amount));
+    }
+}
+
+function deductMemberBalance(coinAmount) {
+    if (isAdminUser) return; // Admin tidak terpotong koin pribadi
+    let cur = getMemberCoinBalance();
+    let next = Math.max(0, cur - coinAmount);
+    setMemberCoinBalance(activeUser, next);
+    updateAllBalanceUI(lastServerBalanceUsd);
+    checkMemberBalanceState();
+}
+
+function checkMemberBalanceState() {
+    if (isAdminUser) return; // Admin bebas beli
+    let btn = document.getElementById('btnBuy');
+    if (!btn) return;
+
+    let memberCoins = getMemberCoinBalance();
+    let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
+
+    if (memberCoins <= 0 || memberCoins < orderCostCoins) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-wallet text-xs"></i> Saldo Koin Tidak Cukup (Isi Saldo)';
+        btn.className = 'w-full py-3 rounded-xl bg-slate-800 text-slate-500 font-bold text-xs uppercase cursor-not-allowed shadow-none';
+    } else {
+        btn.disabled = false;
+        btn.className = 'glow-btn w-full text-white font-black py-3 rounded-xl text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2';
+        btn.innerHTML = '<i class="fa-solid fa-bolt text-xs"></i> Ambil Nomor Facebook Sekarang';
+    }
+}
+
 function toggleBalanceCurrency() {
+    if (!isAdminUser) {
+        alert('Format saldo Anda adalah Koin Saldo (1 Koin = Rp 1).');
+        return;
+    }
     balanceCurrencyMode = (balanceCurrencyMode === 'USD') ? 'IDR' : 'USD';
     TaskSmsBridge.saveUserPref('balance_currency_mode', balanceCurrencyMode);
     
@@ -214,33 +267,40 @@ function toggleBalanceCurrency() {
         filterTransactionsView(currentTxFilter);
     }
 
-    let histView = document.getElementById('view_history');
-    if (histView && histView.style.display !== 'none') {
-        filterOrdersTab(currentOrderTab);
-    }
-
     try { navigator.vibrate(35); } catch(e) {}
 }
 
 function updateAllBalanceUI(val) {
-    let rpVal = Math.round(val * KURS_IDR);
-    let rpStr = 'Rp ' + rpVal.toLocaleString('id-ID');
-    let usdStr = '$' + val.toFixed(3);
-    
     let dompetBal = document.getElementById('dompetTotalBalanceTxt');
     let dompetSub = document.getElementById('dompetSubBalanceTxt');
-    
-    if (balanceCurrencyMode === 'IDR') {
-        if (dompetBal) dompetBal.innerText = rpStr;
-        if (dompetSub) dompetSub.innerText = '~ ' + usdStr;
-    } else {
-        if (dompetBal) dompetBal.innerText = usdStr;
-        if (dompetSub) dompetSub.innerText = '~ ' + rpStr;
-    }
-
     let profCoin = document.getElementById('profilCoinTxt');
-    if (profCoin) {
-        profCoin.innerText = (balanceCurrencyMode === 'IDR') ? rpStr : usdStr;
+    let bTitle = document.getElementById('dompetBalanceTitle');
+
+    if (isAdminUser) {
+        // ADMIN: Tampilkan Saldo Server
+        if (bTitle) bTitle.innerText = 'Saldo Server (Admin Master)';
+        let rpVal = Math.round(val * KURS_IDR);
+        let rpStr = 'Rp ' + rpVal.toLocaleString('id-ID');
+        let usdStr = '$' + val.toFixed(3);
+
+        if (balanceCurrencyMode === 'IDR') {
+            if (dompetBal) dompetBal.innerText = rpStr;
+            if (dompetSub) dompetSub.innerText = '~ ' + usdStr + ' (Ketuk Kurs untuk ganti)';
+            if (profCoin) profCoin.innerText = rpStr;
+        } else {
+            if (dompetBal) dompetBal.innerText = usdStr;
+            if (dompetSub) dompetSub.innerText = '~ ' + rpStr + ' (Ketuk Kurs untuk ganti)';
+            if (profCoin) profCoin.innerText = usdStr;
+        }
+    } else {
+        // MEMBER: SALDO SERVER DISEMBUNYIKAN TOTAL
+        if (bTitle) bTitle.innerText = 'Saldo Koin Saya';
+        let memberCoins = getMemberCoinBalance();
+        let coinStr = memberCoins.toLocaleString('id-ID');
+
+        if (dompetBal) dompetBal.innerText = coinStr;
+        if (dompetSub) dompetSub.innerText = '~ Rp ' + coinStr;
+        if (profCoin) profCoin.innerText = coinStr;
     }
 }
 
@@ -256,8 +316,74 @@ function onGetMasterBalanceResult(res) {
     } catch(e) {}
 }
 
+function handleRefreshSaldo() {
+    if (isAdminUser) {
+        TaskSmsBridge.getMasterServerBalance();
+    } else {
+        updateAllBalanceUI(lastServerBalanceUsd);
+        alert('Saldo koin Anda saat ini: ' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin.');
+    }
+}
+
 // -------------------------------------------------------------
-// SISTEM ORDERS (ORDER HISTORY SESUAI VIDEO)
+// ACTION BUTTONS DOMPET (ADMIN = TRANSFER, MEMBER = DEPOSIT)
+// -------------------------------------------------------------
+function handleMainWalletAction() {
+    if (isAdminUser) {
+        openAdminTransferModal();
+    } else {
+        openDepositView();
+    }
+}
+
+function handleFirstGridAction() {
+    if (isAdminUser) {
+        openAdminTransferModal();
+    } else {
+        openDepositView();
+    }
+}
+
+function openAdminTransferModal() {
+    let html = `
+        <div class="space-y-3">
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+                Kirim saldo koin ke akun member agar mereka bisa membeli nomor virtual:
+            </p>
+            <div>
+                <label class="text-[10px] text-slate-400 font-bold uppercase">Username Member Tujuan</label>
+                <input type="text" id="inpTransferUser" class="auth-input mt-1" placeholder="Contoh: member1">
+            </div>
+            <div>
+                <label class="text-[10px] text-slate-400 font-bold uppercase">Jumlah Saldo Koin</label>
+                <input type="number" id="inpTransferCoin" class="auth-input mt-1 font-mono" placeholder="Contoh: 10000">
+            </div>
+            <button onclick="submitAdminTransferAction()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all shadow-lg shadow-blue-500/20">
+                Kirim Saldo Koin Sekarang
+            </button>
+        </div>
+    `;
+    showProfModal('<i class="fa-solid fa-paper-plane text-cyan-400"></i> Transfer Saldo Member', html);
+}
+
+function submitAdminTransferAction() {
+    let target = (document.getElementById('inpTransferUser').value || '').trim();
+    let amt = parseInt(document.getElementById('inpTransferCoin').value || '0') || 0;
+
+    if (!target) return alert('Username member tujuan wajib diisi!');
+    if (amt <= 0) return alert('Jumlah koin harus lebih dari 0!');
+
+    let curBal = getMemberCoinBalance(target);
+    let nextBal = curBal + amt;
+    setMemberCoinBalance(target, nextBal);
+
+    TaskSmsBridge.pushGlobalLog('Deposit', 'ID', '+' + amt.toLocaleString('id-ID') + ' Koin', 'ADMIN');
+    closeProfModal();
+    alert('Sukses! Berhasil transfer ' + amt.toLocaleString('id-ID') + ' koin ke member: ' + target);
+}
+
+// -------------------------------------------------------------
+// RENDER ORDERS TAB & DETAIL VIEW
 // -------------------------------------------------------------
 function renderOrdersTab() {
     closeOrderDetailView();
@@ -285,7 +411,6 @@ function filterOrdersTab(tab) {
     if (tab === 'active') {
         let activeOrders = allOrders.filter(o => o.status === 'active');
         if (activeOrders.length === 0) {
-            // Tampilan kosong persis di menit 00:02 video
             container.innerHTML = `
                 <div class="text-center py-16 space-y-3">
                     <div class="w-16 h-16 rounded-3xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto text-2xl shadow-inner">
@@ -321,7 +446,6 @@ function buildUnifiedOrdersList() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let list = [];
 
-    // 1. Ambil order yang sedang aktif
     for (let id in taskOrders) {
         let to = taskOrders[id];
         let p = parseFloat(to.price || 0.009);
@@ -342,7 +466,6 @@ function buildUnifiedOrdersList() {
         });
     }
 
-    // 2. Ambil order riwayat selesai
     if (hist && hist.length > 0) {
         hist.forEach((h, idx) => {
             let p = parseFloat(h.price || 0.009);
@@ -370,7 +493,6 @@ function buildUnifiedOrdersList() {
         });
     }
 
-    // 3. Fallback mock list jika riwayat masih kosong (agar persis rekaman video)
     if (list.length < 5) {
         let mockData = [
             { id: '17632599', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'ANY', phone: '+628572-946-8271', otp: '50004', sms: 'FB-50004 adalah kode konfirmasi Facebook Anda', date: '06 Oct 2026, 17:55', status: 'completed', coinPrice: 431, usdPrice: '0.024' },
@@ -378,8 +500,7 @@ function buildUnifiedOrdersList() {
             { id: '17632488', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'INDOSAT', phone: '+628589-106-5298', otp: '88697', sms: 'FB-88697 adalah kode konfirmasi Facebook Anda', date: '06 Oct 2026, 16:15', status: 'completed', coinPrice: 431, usdPrice: '0.024' },
             { id: '17632402', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'INDOSAT', phone: '+628570-250-2062', otp: '94915', sms: 'FB-94915 adalah kode konfirmasi Facebook Anda', date: '06 Oct 2026, 16:12', status: 'completed', coinPrice: 431, usdPrice: '0.024' },
             { id: '17631980', service: 'Dana', country: 'Indonesia', flag: '🇮🇩', carrier: 'ANY', phone: '+628123-433-5549', otp: '15890', sms: 'Jangan berikan kode OTP 15890 DANA ini kepada siapapun.', date: '04 Oct 2026, 19:12', status: 'expired', coinPrice: 158, usdPrice: '0.009' },
-            { id: '17631855', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'ANY', phone: '+628560-793-6430', otp: '43312', sms: 'FB-43312 adalah kode konfirmasi Facebook Anda', date: '02 Oct 2026, 19:21', status: 'canceled', coinPrice: 433, usdPrice: '0.024' },
-            { id: '17631720', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'INDOSAT', phone: '+62851-052-3001', otp: '47011', sms: 'FB-47011 adalah kode konfirmasi Facebook Anda', date: '26 Sep 2026, 18:10', status: 'completed', coinPrice: 470, usdPrice: '0.026' }
+            { id: '17631855', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'ANY', phone: '+628560-793-6430', otp: '43312', sms: 'FB-43312 adalah kode konfirmasi Facebook Anda', date: '02 Oct 2026, 19:21', status: 'canceled', coinPrice: 433, usdPrice: '0.024' }
         ];
         list = list.concat(mockData);
     }
@@ -388,7 +509,7 @@ function buildUnifiedOrdersList() {
 }
 
 function renderOrderCardHtml(o) {
-    let priceDisp = (balanceCurrencyMode === 'USD') ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
+    let priceDisp = (balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
     let isDana = (o.service.toLowerCase() === 'dana');
     let iconHtml = isDana
         ? `<div class="w-10 h-10 rounded-2xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center font-bold text-xs border border-cyan-500/30 shrink-0">DA</div>`
@@ -473,7 +594,7 @@ function openOrderDetail(encodedObj) {
         document.getElementById('detMetaService').innerText = o.service;
         document.getElementById('detMetaCountry').innerText = o.flag + ' ' + o.country;
         
-        let priceDisp = (balanceCurrencyMode === 'USD') ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
+        let priceDisp = (balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
         document.getElementById('detMetaPrice').innerText = priceDisp;
         document.getElementById('detMetaCreated').innerText = o.date;
 
@@ -592,7 +713,7 @@ function submitDepositAction() {
     TaskSmsBridge.saveUserPref('deposit_history', JSON.stringify(depHist));
     if (inp) inp.value = '';
 
-    alert('Deposit ' + selectedDepMethod.toUpperCase() + ' sebesar ' + amt.toLocaleString('id-ID') + ' koin berhasil dibuat! Silakan lakukan pembayaran.');
+    alert('Deposit ' + selectedDepMethod.toUpperCase() + ' sebesar ' + amt.toLocaleString('id-ID') + ' koin berhasil dibuat! Silakan hubungi admin untuk konfirmasi.');
     renderDepositHistory();
 }
 
@@ -614,24 +735,6 @@ function renderDepositHistory() {
                             <span class="text-[9px] text-slate-500 font-mono">6fdac6c...</span>
                         </div>
                         <div class="text-[10px] text-slate-400 mt-0.5">24 Sep 2026, 23:35</div>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-xs font-mono font-bold text-white">🪙 10,000</div>
-                    <span class="inline-block mt-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ Credited</span>
-                </div>
-            </div>
-            <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
-                        <i class="fa-solid fa-wallet"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                            <span>QRIS</span>
-                            <span class="text-[9px] text-slate-500 font-mono">e2470b2...</span>
-                        </div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">26 Aug 2026, 22:46</div>
                     </div>
                 </div>
                 <div class="text-right">
@@ -666,13 +769,33 @@ function renderDepositHistory() {
 }
 
 // -------------------------------------------------------------
-// RENDER DOMPET UTAMA (RECENT ACTIVITY DENGAN KURS DINAMIS)
+// RENDER DOMPET UTAMA
 // -------------------------------------------------------------
 function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     balanceCurrencyMode = TaskSmsBridge.getUserPref('balance_currency_mode', 'USD');
     
-    TaskSmsBridge.getMasterServerBalance();
+    // Sesuaikan tombol Dompet sesuai Hak Akses
+    let actionBtnLabel = document.getElementById('dompetMainActionLabel');
+    let actionBtnIcon = document.getElementById('dompetMainActionIcon');
+    let gridActionLabel = document.getElementById('gridFirstActionLabel');
+    let gridActionFa = document.getElementById('gridFirstActionFa');
+
+    if (isAdminUser) {
+        if (actionBtnLabel) actionBtnLabel.innerText = 'Transfer';
+        if (actionBtnIcon) actionBtnIcon.className = 'fa-solid fa-paper-plane text-sm';
+        if (gridActionLabel) gridActionLabel.innerText = 'Kirim Saldo';
+        if (gridActionFa) gridActionFa.className = 'fa-solid fa-paper-plane';
+    } else {
+        if (actionBtnLabel) actionBtnLabel.innerText = 'Top up';
+        if (actionBtnIcon) actionBtnIcon.className = 'fa-solid fa-circle-plus text-sm';
+        if (gridActionLabel) gridActionLabel.innerText = 'Deposit';
+        if (gridActionFa) gridActionFa.className = 'fa-solid fa-circle-plus';
+    }
+
+    if (isAdminUser) {
+        TaskSmsBridge.getMasterServerBalance();
+    }
     updateAllBalanceUI(lastServerBalanceUsd);
 
     let dKurs = document.getElementById('dompetKursTxt');
@@ -694,11 +817,11 @@ function renderDompetRecentActivity(hist) {
 function buildMockTransactionItems(hist) {
     let items = [];
     if (hist && hist.length > 0) {
-        let runningBal = 6328;
+        let runningBal = isAdminUser ? 6328 : getMemberCoinBalance();
         hist.forEach((h, idx) => {
             let isRefund = (idx % 4 === 3);
             let p = parseFloat(h.price || 0.009);
-            let costCoin = Math.max(158, Math.round(p * KURS_IDR));
+            let costCoin = Math.max(161, Math.round(p * KURS_IDR));
             let costUsd = p.toFixed(3);
 
             if (isRefund) {
@@ -714,7 +837,7 @@ function buildMockTransactionItems(hist) {
                     usdBalance: (runningBal / KURS_IDR).toFixed(3)
                 });
             } else {
-                runningBal -= costCoin;
+                runningBal = Math.max(0, runningBal - costCoin);
                 items.push({
                     type: 'debit',
                     title: 'Order debit',
@@ -730,17 +853,11 @@ function buildMockTransactionItems(hist) {
     }
 
     if (items.length < 5) {
+        let mb = getMemberCoinBalance();
         items = [
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 17:55', coinCost: '431', usdCost: '0.024', coinBalance: '6,328', usdBalance: '0.354' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:18', coinCost: '431', usdCost: '0.024', coinBalance: '6,759', usdBalance: '0.378' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:15', coinCost: '431', usdCost: '0.024', coinBalance: '7,190', usdBalance: '0.402' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:12', coinCost: '431', usdCost: '0.024', coinBalance: '7,621', usdBalance: '0.426' },
-            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '04 Oct 2026, 19:37', coinCost: '158', usdCost: '0.009', coinBalance: '8,052', usdBalance: '0.450' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '04 Oct 2026, 19:12', coinCost: '158', usdCost: '0.009', coinBalance: '7,894', usdBalance: '0.441' },
-            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '02 Oct 2026, 19:27', coinCost: '433', usdCost: '0.024', coinBalance: '8,052', usdBalance: '0.450' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:21', coinCost: '433', usdCost: '0.024', coinBalance: '7,619', usdBalance: '0.426' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:21', coinCost: '433', usdCost: '0.024', coinBalance: '8,052', usdBalance: '0.450' },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '02 Oct 2026, 19:18', coinCost: '433', usdCost: '0.024', coinBalance: '8,485', usdBalance: '0.474' }
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 17:55', coinCost: '431', usdCost: '0.024', coinBalance: mb.toLocaleString('id-ID'), usdBalance: (mb / KURS_IDR).toFixed(3) },
+            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:18', coinCost: '431', usdCost: '0.024', coinBalance: (mb + 431).toLocaleString('id-ID'), usdBalance: ((mb + 431) / KURS_IDR).toFixed(3) },
+            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '04 Oct 2026, 19:37', coinCost: '158', usdCost: '0.009', coinBalance: (mb + 589).toLocaleString('id-ID'), usdBalance: ((mb + 589) / KURS_IDR).toFixed(3) }
         ];
     }
     return items;
@@ -755,8 +872,13 @@ function renderTransactionCardHtml(it) {
     let amtColor = isCredit ? 'text-emerald-400' : 'text-rose-400';
     let sign = isCredit ? '+' : '-';
 
-    let displayAmount = (balanceCurrencyMode === 'USD') ? `${sign}$${it.usdCost}` : `<span class="text-amber-300">🪙</span> ${sign}${it.coinCost}`;
-    let displayBalance = (balanceCurrencyMode === 'USD') ? `$${it.usdBalance}` : `<span class="text-amber-300">🪙</span> ${it.coinBalance}`;
+    let displayAmount = (balanceCurrencyMode === 'USD' && isAdminUser) 
+        ? `${sign}$${it.usdCost}` 
+        : `<span class="text-amber-300">🪙</span> ${sign}${it.coinCost}`;
+        
+    let displayBalance = (balanceCurrencyMode === 'USD' && isAdminUser) 
+        ? `$${it.usdBalance}` 
+        : `<span class="text-amber-300">🪙</span> ${it.coinBalance}`;
 
     return `
         <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 shadow-sm space-y-2.5">
@@ -825,40 +947,46 @@ function closeProfModal() {
 
 function openAccountDetailModal() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
-    let totalUsd = 0; hist.forEach(h => { totalUsd += parseFloat(h.price || 0); });
     let roleName = isAdminUser ? 'OWNER / MASTER' : 'MEMBER';
-    
-    let html = `<div class="space-y-2.5">
-        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
-            <div class="flex justify-between items-center"><span class="text-slate-400">Username</span> <span class="font-bold text-white">${activeUser}</span></div>
-            <div class="flex justify-between items-center"><span class="text-slate-400">Role</span> <span class="font-bold text-cyan-400">${roleName}</span></div>
-            <div class="flex justify-between items-center"><span class="text-slate-400">Saldo Server</span> <span class="font-bold text-cyan-300 font-mono">$${lastServerBalanceUsd.toFixed(3)} (${formatRupiahOnly(lastServerBalanceUsd)})</span></div>
-            <div class="flex justify-between items-center"><span class="text-slate-400">Total Transaksi</span> <span class="font-bold text-emerald-400">${hist.length} Order</span></div>
+    let saldoInfo = isAdminUser 
+        ? `$${lastServerBalanceUsd.toFixed(3)} (${formatRupiahOnly(lastServerBalanceUsd)})`
+        : `${getMemberCoinBalance().toLocaleString('id-ID')} Koin`;
+
+    let html = `
+        <div class="space-y-2.5">
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                <div class="flex justify-between items-center"><span class="text-slate-400">Username</span> <span class="font-bold text-white">${activeUser}</span></div>
+                <div class="flex justify-between items-center"><span class="text-slate-400">Role</span> <span class="font-bold text-cyan-400">${roleName}</span></div>
+                <div class="flex justify-between items-center"><span class="text-slate-400">${isAdminUser ? 'Saldo Server' : 'Saldo Koin'}</span> <span class="font-bold text-cyan-300 font-mono">${saldoInfo}</span></div>
+                <div class="flex justify-between items-center"><span class="text-slate-400">Total Transaksi</span> <span class="font-bold text-emerald-400">${hist.length} Order</span></div>
+            </div>
+            <button onclick="TaskSmsBridge.copyToClipboard('${activeUser}', 'Username'); closeProfModal();" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center gap-2">
+                <i class="fa-regular fa-copy"></i> Salin Username
+            </button>
         </div>
-        <button onclick="TaskSmsBridge.copyToClipboard('${activeUser}', 'Username'); closeProfModal();" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center gap-2">
-            <i class="fa-regular fa-copy"></i> Salin Username
-        </button>
-    </div>`;
+    `;
     showProfModal('<i class="fa-solid fa-id-card text-blue-400"></i> Detail Akun Saya', html);
 }
 
 function openThemeModal() {
     let curTheme = TaskSmsBridge.getUserPref('app_theme', 'system');
-    let html = `<div class="space-y-2">
-        <p class="text-[11px] text-slate-400 mb-2">Pilih tema antarmuka aplikasi:</p>
-        <div onclick="setAppTheme('system')" class="p-3 rounded-xl border ${curTheme === 'system' ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
-            <div class="flex items-center gap-2.5"><i class="fa-solid fa-circle-half-stroke text-blue-400 text-base"></i><span class="font-bold text-white">System default</span></div>
-            ${curTheme === 'system' ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
+    let html = `
+        <div class="space-y-2">
+            <p class="text-[11px] text-slate-400 mb-2">Pilih tema antarmuka aplikasi:</p>
+            <div onclick="setAppTheme('system')" class="p-3 rounded-xl border ${curTheme === 'system' ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
+                <div class="flex items-center gap-2.5"><i class="fa-solid fa-circle-half-stroke text-blue-400 text-base"></i><span class="font-bold text-white">System default</span></div>
+                ${curTheme === 'system' ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
+            </div>
+            <div onclick="setAppTheme('dark')" class="p-3 rounded-xl border ${curTheme === 'dark' ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
+                <div class="flex items-center gap-2.5"><i class="fa-solid fa-moon text-indigo-400 text-base"></i><span class="font-bold text-white">Malam (Dark Mode)</span></div>
+                ${curTheme === 'dark' ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
+            </div>
+            <div onclick="setAppTheme('light')" class="p-3 rounded-xl border ${curTheme === 'light' ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
+                <div class="flex items-center gap-2.5"><i class="fa-solid fa-sun text-amber-400 text-base"></i><span class="font-bold text-white">Siang (Light Mode)</span></div>
+                ${curTheme === 'light' ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
+            </div>
         </div>
-        <div onclick="setAppTheme('dark')" class="p-3 rounded-xl border ${curTheme === 'dark' ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
-            <div class="flex items-center gap-2.5"><i class="fa-solid fa-moon text-indigo-400 text-base"></i><span class="font-bold text-white">Malam (Dark Mode)</span></div>
-            ${curTheme === 'dark' ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
-        </div>
-        <div onclick="setAppTheme('light')" class="p-3 rounded-xl border ${curTheme === 'light' ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
-            <div class="flex items-center gap-2.5"><i class="fa-solid fa-sun text-amber-400 text-base"></i><span class="font-bold text-white">Siang (Light Mode)</span></div>
-            ${curTheme === 'light' ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
-        </div>
-    </div>`;
+    `;
     showProfModal('<i class="fa-solid fa-palette text-cyan-400"></i> Pilih Tema Tampilan', html);
 }
 
@@ -891,35 +1019,32 @@ function togglePushNotifSetting(isEnabled) {
 }
 
 function openSupportModal() {
-    let html = `<div class="space-y-3">
-        <p class="text-[11px] text-slate-400 leading-relaxed">Butuh bantuan transaksi nomor Facebook atau isi ulang saldo server? Hubungi kontak resmi di bawah ini:</p>
-        <div class="space-y-2">
-            <div onclick="TaskSmsBridge.copyToClipboard('@TaskSmsSupport', 'Telegram Support'); closeProfModal();" class="bg-blue-600/20 border border-blue-500/40 p-3 rounded-xl flex items-center justify-between cursor-pointer active:scale-98">
-                <div class="flex items-center gap-3">
-                    <i class="fa-brands fa-telegram text-blue-400 text-xl"></i>
-                    <div><div class="font-bold text-white text-xs">Telegram Support</div><div class="text-[10px] text-slate-400">@TaskSmsSupport</div></div>
+    let html = `
+        <div class="space-y-3">
+            <p class="text-[11px] text-slate-400 leading-relaxed">Butuh bantuan transaksi nomor Facebook atau isi ulang saldo koin? Hubungi kontak resmi di bawah ini:</p>
+            <div class="space-y-2">
+                <div onclick="TaskSmsBridge.copyToClipboard('@TaskSmsSupport', 'Telegram Support'); closeProfModal();" class="bg-blue-600/20 border border-blue-500/40 p-3 rounded-xl flex items-center justify-between cursor-pointer active:scale-98">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-brands fa-telegram text-blue-400 text-xl"></i>
+                        <div><div class="font-bold text-white text-xs">Telegram Support</div><div class="text-[10px] text-slate-400">@TaskSmsSupport</div></div>
+                    </div>
+                    <span class="text-cyan-400 font-bold text-xs"><i class="fa-regular fa-copy"></i></span>
                 </div>
-                <span class="text-cyan-400 font-bold text-xs"><i class="fa-regular fa-copy"></i></span>
-            </div>
-            <div onclick="TaskSmsBridge.copyToClipboard('+6281234567890', 'WhatsApp CS'); closeProfModal();" class="bg-emerald-600/20 border border-emerald-500/40 p-3 rounded-xl flex items-center justify-between cursor-pointer active:scale-98">
-                <div class="flex items-center gap-3">
-                    <i class="fa-brands fa-whatsapp text-emerald-400 text-xl"></i>
-                    <div><div class="font-bold text-white text-xs">WhatsApp CS</div><div class="text-[10px] text-slate-400">+62 812-xxxx-xxxx</div></div>
-                </div>
-                <span class="text-emerald-400 font-bold text-xs"><i class="fa-regular fa-copy"></i></span>
             </div>
         </div>
-    </div>`;
+    `;
     showProfModal('<i class="fa-solid fa-headset text-amber-400"></i> Bantuan & Layanan', html);
 }
 
 function openNotifModal() {
-    let html = `<div class="space-y-3">
-        <p class="text-[11px] text-slate-400 leading-relaxed">Notifikasi real-time aktif untuk membaca kode OTP Facebook yang masuk ke statusbar Anda.</p>
-        <button onclick="testNotificationFire()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-all">
-            <i class="fa-solid fa-bell"></i> Tes Bunyi Notifikasi OTP
-        </button>
-    </div>`;
+    let html = `
+        <div class="space-y-3">
+            <p class="text-[11px] text-slate-400 leading-relaxed">Notifikasi real-time aktif untuk membaca kode OTP Facebook yang masuk ke statusbar Anda.</p>
+            <button onclick="testNotificationFire()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-all">
+                <i class="fa-solid fa-bell"></i> Tes Bunyi Notifikasi OTP
+            </button>
+        </div>
+    `;
     showProfModal('<i class="fa-solid fa-bell text-blue-400"></i> Notifikasi Sistem', html);
 }
 
@@ -929,14 +1054,16 @@ function testNotificationFire() {
 }
 
 function openPasswordModal() {
-    let html = `<div class="space-y-3">
-        <p class="text-[11px] text-slate-400">Masukkan password baru untuk akun <b>${activeUser}</b>:</p>
-        <input type="password" id="inpNewPassword" class="auth-input mb-2" placeholder="Password Baru">
-        <input type="password" id="inpConfirmPassword" class="auth-input" placeholder="Konfirmasi Password Baru">
-        <button onclick="saveNewPasswordAction()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-            Perbarui Password
-        </button>
-    </div>`;
+    let html = `
+        <div class="space-y-3">
+            <p class="text-[11px] text-slate-400">Masukkan password baru untuk akun <b>${activeUser}</b>:</p>
+            <input type="password" id="inpNewPassword" class="auth-input mb-2" placeholder="Password Baru">
+            <input type="password" id="inpConfirmPassword" class="auth-input" placeholder="Konfirmasi Password Baru">
+            <button onclick="saveNewPasswordAction()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                Perbarui Password
+            </button>
+        </div>
+    `;
     showProfModal('<i class="fa-solid fa-lock text-purple-400"></i> Ganti Password Akun', html);
 }
 
@@ -954,18 +1081,17 @@ function saveNewPasswordAction() {
 
 function openWebhookModal() {
     let savedHook = TaskSmsBridge.getUserPref('webhook_url', '');
-    let html = `<div class="space-y-3">
-        <p class="text-[11px] text-slate-400 leading-relaxed">Teruskan otomatis setiap SMS/OTP yang didapat ke URL endpoint Webhook (Discord / Telegram / Server pribadi Anda):</p>
-        <input type="url" id="inpWebhookUrl" value="${savedHook}" class="auth-input font-mono text-xs" placeholder="https://your-domain.com/webhook">
-        <div class="flex gap-2">
-            <button onclick="saveWebhookAction()" class="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-                Simpan URL
-            </button>
-            <button onclick="testWebhookAction()" class="flex-1 bg-slate-800 text-cyan-400 border border-slate-700 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-                Tes Kirim
-            </button>
+    let html = `
+        <div class="space-y-3">
+            <p class="text-[11px] text-slate-400 leading-relaxed">Teruskan otomatis setiap SMS/OTP yang didapat ke URL endpoint Webhook:</p>
+            <input type="url" id="inpWebhookUrl" value="${savedHook}" class="auth-input font-mono text-xs" placeholder="https://your-domain.com/webhook">
+            <div class="flex gap-2">
+                <button onclick="saveWebhookAction()" class="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                    Simpan URL
+                </button>
+            </div>
         </div>
-    </div>`;
+    `;
     showProfModal('<i class="fa-solid fa-link text-teal-400"></i> Webhook Forwarder', html);
 }
 
@@ -976,50 +1102,50 @@ function saveWebhookAction() {
     closeProfModal();
 }
 
-function testWebhookAction() {
-    let u = document.getElementById('inpWebhookUrl').value.trim();
-    if(!u) return alert('Masukkan URL webhook terlebih dahulu!');
-    alert('Tes payload dikirim ke: ' + u);
-}
-
 function openApiTokenModal() {
     let fakeToken = 'tk_' + (activeUser || 'user') + '_live_' + Math.abs(activeUser.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0));
-    let html = `<div class="space-y-3">
-        <p class="text-[11px] text-slate-400">Gunakan API Token ini untuk integrasi via script eksternal atau bot:</p>
-        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
-            <div class="text-[9px] text-slate-500 uppercase font-bold">API Soft Identifier</div>
-            <div class="text-xs font-mono font-bold text-white mt-0.5">TASKSMS_PRO</div>
+    let html = `
+        <div class="space-y-3">
+            <p class="text-[11px] text-slate-400">Gunakan API Token ini untuk integrasi via script eksternal atau bot:</p>
+            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                <div class="text-[9px] text-slate-500 uppercase font-bold">API Soft Identifier</div>
+                <div class="text-xs font-mono font-bold text-white mt-0.5">TASKSMS_PRO</div>
+            </div>
+            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                <div class="text-[9px] text-slate-500 uppercase font-bold">Secret Access Key</div>
+                <div class="text-xs font-mono text-cyan-400 mt-0.5 break-all" id="dispSecretToken">${fakeToken}</div>
+            </div>
+            <button onclick="TaskSmsBridge.copyToClipboard('${fakeToken}', 'API Token'); closeProfModal();" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all flex items-center justify-center gap-2">
+                <i class="fa-regular fa-copy"></i> Salin Token API
+            </button>
         </div>
-        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
-            <div class="text-[9px] text-slate-500 uppercase font-bold">Secret Access Key</div>
-            <div class="text-xs font-mono text-cyan-400 mt-0.5 break-all" id="dispSecretToken">${fakeToken}</div>
-        </div>
-        <button onclick="TaskSmsBridge.copyToClipboard('${fakeToken}', 'API Token'); closeProfModal();" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all flex items-center justify-center gap-2">
-            <i class="fa-regular fa-copy"></i> Salin Token API
-        </button>
-    </div>`;
+    `;
     showProfModal('<i class="fa-solid fa-key text-amber-400"></i> Kunci API Pengembang', html);
 }
 
 function openSignoutEverywhereModal() {
-    let html = `<div class="space-y-3">
-        <p class="text-[11px] text-slate-400 leading-relaxed">Tindakan ini akan mencabut seluruh sesi login akun <b>${activeUser}</b> di perangkat lain dan keluar dari sesi saat ini.</p>
-        <button onclick="closeProfModal(); TaskSmsBridge.doLogout();" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-            Ya, Keluar Dari Semua Sesi
-        </button>
-    </div>`;
+    let html = `
+        <div class="space-y-3">
+            <p class="text-[11px] text-slate-400 leading-relaxed">Tindakan ini akan mencabut seluruh sesi login akun <b>${activeUser}</b> di perangkat lain.</p>
+            <button onclick="closeProfModal(); TaskSmsBridge.doLogout();" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                Ya, Keluar Dari Semua Sesi
+            </button>
+        </div>
+    `;
     showProfModal('<i class="fa-solid fa-mobile-screen-button text-rose-400"></i> Sign Out Everywhere', html);
 }
 
 function openDeleteAccountModal() {
-    let html = `<div class="space-y-3">
-        <p class="text-[11px] text-rose-300 leading-relaxed font-bold">Peringatan: Penghapusan akun akan membersihkan seluruh data riwayat SMS dan saldo server yang terhubung.</p>
-        <p class="text-[10px] text-slate-400">Ketik username Anda (<b>${activeUser}</b>) untuk konfirmasi:</p>
-        <input type="text" id="inpConfirmDelete" class="auth-input font-mono text-xs" placeholder="Ketik username Anda">
-        <button onclick="processDeleteAccountAction()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-            Hapus Akun Permanen
-        </button>
-    </div>`;
+    let html = `
+        <div class="space-y-3">
+            <p class="text-[11px] text-rose-300 leading-relaxed font-bold">Peringatan: Penghapusan akun akan membersihkan seluruh data riwayat SMS.</p>
+            <p class="text-[10px] text-slate-400">Ketik username Anda (<b>${activeUser}</b>) untuk konfirmasi:</p>
+            <input type="text" id="inpConfirmDelete" class="auth-input font-mono text-xs" placeholder="Ketik username Anda">
+            <button onclick="processDeleteAccountAction()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                Hapus Akun Permanen
+            </button>
+        </div>
+    `;
     showProfModal('<i class="fa-regular fa-trash-can text-rose-400"></i> Hapus Akun', html);
 }
 
@@ -1367,9 +1493,7 @@ function selectLiveCountry(code) {
     document.getElementById('selTargetTxt').innerHTML = `${getFlagImgHtml(item.iso, item.name, 18)} <span>${item.name}</span> <span class="text-[10px] bg-slate-800 text-emerald-400 px-1.5 py-0.5 rounded border border-slate-700 uppercase font-mono">+${code}</span>`;
     document.getElementById('selRealtimeStock').innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Pool Ready</span>`;
 
-    let btn = document.getElementById('btnBuy');
-    btn.disabled = false;
-    btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> Ambil Nomor ${item.name}`;
+    checkMemberBalanceState();
 }
 
 function onServiceFbClick() {
@@ -1443,8 +1567,7 @@ function onGetCountNumberResult(res) {
         if (count > 0) {
             stockTxt.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>${count.toLocaleString('id-ID')} pcs ready</span>`;
             if(cardStock) cardStock.innerHTML = `<span class="text-emerald-400">${count.toLocaleString('id-ID')} ready</span>`;
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-bolt text-xs"></i> Ambil Nomor Sekarang';
+            checkMemberBalanceState();
         } else {
             stockTxt.innerHTML = '<span class="text-rose-400 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i>Stok Habis (0 pcs)</span>';
             if(cardStock) cardStock.innerHTML = '<span class="text-rose-400">0 ready</span>';
@@ -1453,11 +1576,16 @@ function onGetCountNumberResult(res) {
         }
     } catch(e) {
         stockTxt.innerText = 'Stok: Tersedia';
-        btn.disabled = false;
+        checkMemberBalanceState();
     }
 }
 
 function executeOrderNow() {
+    let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
+    if (!isAdminUser && getMemberCoinBalance() < orderCostCoins) {
+        return alert('Saldo koin Anda tidak mencukupi (' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin). Silakan isi saldo terlebih dahulu.');
+    }
+
     let btn = document.getElementById('btnBuy');
     btn.disabled = true;
     if (selectedCountryCode !== 'id') {
@@ -1499,7 +1627,14 @@ function onGetNumberResult(res) {
             persistOrders();
             renderOrderCardUI(d.idNum, d.tel, curPriceNum, selectedOperatorLabel.toUpperCase(), null, 'Menunggu SMS masuk dari server...', timeStr, true, 'vak');
             activeIds.push(d.idNum);
-            TaskSmsBridge.getMasterServerBalance();
+            
+            // POTONG SALDO MEMBER JIKA ORDER BERHASIL
+            let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
+            deductMemberBalance(orderCostCoins);
+
+            if (isAdminUser) {
+                TaskSmsBridge.getMasterServerBalance();
+            }
         } else if(d.error) {
             if(d.error === 'noNumbers') alert('Nomor habis untuk pilihan ini.');
             else alert('Gagal: ' + d.error);
@@ -1618,7 +1753,9 @@ function cancelOrder(id) {
     persistOrders();
     activeIds = activeIds.filter(item => item !== id);
     let el = document.getElementById('order_' + id); if(el) el.remove();
-    setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
+    if (isAdminUser) {
+        setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
+    }
 }
 
 function banOrder(id) {
@@ -1635,7 +1772,9 @@ function onBanVakResult(id, res) {
     persistOrders();
     activeIds = activeIds.filter(item => item !== id);
     let el = document.getElementById('order_' + id); if(el) el.remove();
-    setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
+    if (isAdminUser) {
+        setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
+    }
 }
 
 function onCancelVakResult(id, res) {}
@@ -1748,7 +1887,9 @@ function uiLoginSuccess(username, isAdmin) {
     TaskSmsBridge.startGlobalListener();
     restoreOrdersFromStorage();
     
-    TaskSmsBridge.getMasterServerBalance();
+    if (isAdminUser) {
+        TaskSmsBridge.getMasterServerBalance();
+    }
     
     switchBottomTab('beranda');
 }
