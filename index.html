@@ -24,12 +24,12 @@
 <div id="taskHistModal" class="fixed inset-0 bg-black/85 z-50 hidden flex flex-col justify-end transition-opacity">
     <div class="bg-[#0D1424] w-full h-[88%] rounded-t-3xl p-4 flex flex-col shadow-2xl border-t border-blue-500/40">
         <div class="flex justify-between items-center mb-2.5">
-            <h2 class="text-sm font-black text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-blue-400"></i> Riwayat SMS Facebook</h2>
+            <h2 class="text-sm font-black text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-blue-400"></i> <span id="txtHistTitle">Riwayat SMS</span></h2>
             <button class="bg-slate-800 text-slate-300 w-7 h-7 rounded-full font-bold shadow text-xs" onclick="closeTaskHistory()">&times;</button>
         </div>
         <div class="bg-slate-900/90 p-2.5 rounded-xl mb-2.5 text-center border border-slate-800">
-            <div class="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Total Transaksi Akun</div>
-            <div class="text-base font-black text-cyan-400 font-mono" id="taskTotalSpentTxt">$0.00 (~ Rp 0)</div>
+            <div class="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5" id="txtTotalSpentLabel">Total Transaksi Akun</div>
+            <div class="text-base font-black text-cyan-400 font-mono" id="taskTotalSpentTxt">-</div>
         </div>
         <div id="taskHistList" class="flex-1 overflow-y-auto pb-2 custom-scrollbar"></div>
         <div id="taskPagination" class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-center gap-1 select-none"></div>
@@ -42,7 +42,7 @@
         <div class="text-center mb-5">
             <div class="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-blue-500/30 text-2xl shadow-inner"><i class="fa-brands fa-facebook"></i></div>
             <h2 class="text-lg font-black tracking-wider text-white">TASK<span class="text-blue-400">SMS</span> FB</h2>
-            <p class="text-[10px] text-slate-400 mt-0.5">Multi-Country Verification Hub</p>
+            <p class="text-[10px] text-slate-400 mt-0.5" id="txtAuthSubtitle">Multi-Country Verification Hub</p>
         </div>
         <div class="flex bg-slate-900/90 p-1 rounded-xl mb-4 border border-slate-800">
             <button id="tabBtnLogin" onclick="switchTab('login')" class="flex-1 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white shadow">Masuk</button>
@@ -64,13 +64,13 @@
         <div class="flex items-center justify-between pt-1 pb-1">
             <div>
                 <h1 class="text-xl font-black text-white tracking-tight flex items-center gap-1">
-                    Hi, <span id="homeUserGreeting">User</span>!
+                    <span id="txtHomeGreetingPrefix">Hi</span>, <span id="homeUserGreeting">-</span>!
                 </h1>
-                <p class="text-xs text-slate-400 font-medium mt-0.5">Let's get your number</p>
+                <p class="text-xs text-slate-400 font-medium mt-0.5" id="txtHomeSubtitle">Let's get your number</p>
             </div>
             <div onclick="openNotificationsView()" class="relative w-11 h-11 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-white cursor-pointer active:scale-90 transition-transform shadow-md">
                 <i class="fa-regular fa-bell text-base"></i>
-                <span id="notifBadgeCount" class="absolute -top-1 -right-1 bg-rose-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full border-2 border-[#070B14]">99+</span>
+                <span id="notifBadgeCount" class="absolute -top-1 -right-1 bg-rose-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full border-2 border-[#070B14]" style="display: none;">0</span>
             </div>
         </div>
 
@@ -86,7 +86,7 @@
                             <span class="text-amber-300 text-lg">🪙</span>
                             <span id="homeBalanceCoins">0</span>
                         </div>
-                        <div class="text-xs text-blue-100 font-medium truncate max-w-[200px]" id="homeUserEmail">user@tasksms.com</div>
+                        <div class="text-xs text-blue-100 font-medium truncate max-w-[200px]" id="homeUserEmail">-</div>
                     </div>
                 </div>
                 <i class="fa-solid fa-chevron-right text-blue-200 text-sm"></i>
@@ -99,7 +99,7 @@
                 </div>
                 <div class="flex items-center gap-1.5">
                     <i class="fa-solid fa-star text-xs text-amber-300"></i>
-                    <span id="homeSuccessRate">100% Success Rate</span>
+                    <span id="homeSuccessRate">-</span>
                 </div>
             </div>
         </div>
@@ -113,7 +113,7 @@
                     </div>
                     <div>
                         <div class="text-sm font-black text-white tracking-wide flex items-center gap-1.5">FACEBOOK <span class="text-[9px] font-bold bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded border border-blue-500/30">ACTIVE</span></div>
-                        <div class="text-[10px] text-slate-400 font-medium flex items-center gap-1"><span>Tap untuk segarkan negara & stok</span> <i class="fa-solid fa-arrows-rotate text-cyan-400 text-[9px]"></i></div>
+                        <div class="text-[10px] text-slate-400 font-medium flex items-center gap-1"><span id="txtTapRefresh">Tap untuk segarkan negara & stok</span> <i class="fa-solid fa-arrows-rotate text-cyan-400 text-[9px]"></i></div>
                     </div>
                 </div>
                 <span id="fbStatusBadge" class="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-1 rounded-md transition-all">AKTIF</span>
@@ -123,7 +123,7 @@
         <!-- PILIHAN NEGARA -->
         <div class="glass-card p-3.5 relative">
             <div class="flex justify-between items-center mb-2 px-1">
-                <div class="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase">PILIH NEGARA (<span id="totalCountriesTxt" class="text-cyan-400">1</span>)</div>
+                <div class="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase"><span id="txtSelectCountryLabel">PILIH NEGARA</span> (<span id="totalCountriesTxt" class="text-cyan-400">1</span>)</div>
                 <span class="text-[10px] text-cyan-400 font-mono font-bold">VERIFIKASI FB</span>
             </div>
 
@@ -157,7 +157,7 @@
                             </div>
                         </div>
                         <div class="text-right">
-                            <div class="text-xs font-mono font-bold text-cyan-400" id="card_price_id">Rp 161</div>
+                            <div class="text-xs font-mono font-bold text-cyan-400" id="card_price_id">-</div>
                             <div id="card_stock_id" class="text-[9px] font-mono text-emerald-400">Ready</div>
                         </div>
                     </div>
@@ -168,8 +168,8 @@
 
         <div id="operatorSection" class="glass-card p-3.5 border border-slate-800">
             <div class="flex justify-between items-center mb-2 px-1">
-                <div class="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase">OPERATOR INDONESIA</div>
-                <span class="text-[10px] font-mono font-bold text-cyan-400">2 JALUR</span>
+                <div class="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase" id="txtOperatorTitle">OPERATOR INDONESIA</div>
+                <span class="text-[10px] font-mono font-bold text-cyan-400" id="txtOperatorCount">2 JALUR</span>
             </div>
             <div id="operatorGrid" class="flex flex-wrap gap-2 items-center"></div>
         </div>
@@ -177,7 +177,7 @@
         <div id="buyActionBar" class="glass-card p-3.5 border border-cyan-500/30">
             <div class="flex justify-between items-center mb-3 text-xs font-mono">
                 <div>
-                    <div class="text-[9px] text-slate-400 uppercase font-bold">Target Pilihan</div>
+                    <div class="text-[9px] text-slate-400 uppercase font-bold" id="txtTargetLabel">Target Pilihan</div>
                     <div class="text-sm font-black text-white flex items-center gap-2" id="selTargetTxt">
                         <img src="https://flagcdn.com/h20/id.png" srcset="https://flagcdn.com/h40/id.png 2x, https://flagcdn.com/h60/id.png 3x" height="18" style="height:18px; width:auto; border-radius:3px;" alt="" onerror="this.onerror=null;this.src='https://flagcdn.com/h20/un.png';">
                         <span>Indonesia</span>
@@ -187,11 +187,11 @@
                 </div>
                 <div class="text-right">
                     <div class="text-[9px] text-slate-400 uppercase font-bold" id="selPriceLabelTxt">Harga Bersih</div>
-                    <div class="text-sm font-black text-emerald-400 font-mono" id="selProviderBadge">$0.009 (Rp 161)</div>
+                    <div class="text-sm font-black text-emerald-400 font-mono" id="selProviderBadge">-</div>
                 </div>
             </div>
             <button id="btnBuy" onclick="executeOrderNow()" class="glow-btn w-full text-white font-black py-3 rounded-xl text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-bolt text-xs"></i> Ambil Nomor Facebook Sekarang
+                <i class="fa-solid fa-bolt text-xs"></i> <span id="txtBtnBuyLabel">Ambil Nomor Facebook Sekarang</span>
             </button>
         </div>
 
@@ -204,8 +204,8 @@
             <button onclick="backToHomeFromNotif()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
-            <h2 class="text-base font-black text-white tracking-wide">Notifications</h2>
-            <button onclick="markAllNotifsRead()" class="text-xs font-bold text-blue-400 hover:text-blue-300 active:scale-95">
+            <h2 class="text-base font-black text-white tracking-wide" id="txtNotifPageTitle">Notifications</h2>
+            <button onclick="markAllNotifsRead()" class="text-xs font-bold text-blue-400 hover:text-blue-300 active:scale-95" id="txtMarkAllRead">
                 Mark all read
             </button>
         </div>
@@ -217,7 +217,7 @@
     <div id="view_history" class="view-pane space-y-3.5" style="display: none;">
         <div id="ordersListView" class="space-y-3.5">
             <div class="text-center py-1">
-                <h2 class="text-base font-black text-white tracking-wide">Orders</h2>
+                <h2 class="text-base font-black text-white tracking-wide" id="txtOrdersHeaderTitle">Orders</h2>
             </div>
 
             <div class="flex bg-slate-900/90 p-1 rounded-2xl border border-slate-800 gap-1">
@@ -235,7 +235,7 @@
                 <button onclick="closeOrderDetailView()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
-                <h2 class="text-sm font-black text-white font-mono" id="detOrderIdHeader">Order #17632599</h2>
+                <h2 class="text-sm font-black text-white font-mono" id="detOrderIdHeader">Order #-</h2>
                 <div class="w-9"></div>
             </div>
 
@@ -245,21 +245,21 @@
                         <i class="fa-brands fa-facebook"></i>
                     </div>
                     <div>
-                        <div class="text-sm font-black text-white" id="detServiceTitle">Facebook</div>
+                        <div class="text-sm font-black text-white" id="detServiceTitle">-</div>
                         <div class="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                            <span id="detCountryFlag">🇮🇩</span>
-                            <span id="detCountryName">Indonesia</span>
+                            <span id="detCountryFlag">🌐</span>
+                            <span id="detCountryName">-</span>
                             <span class="text-[9px] bg-slate-800 text-cyan-400 px-1.5 py-0.5 rounded font-mono" id="detCarrierTag">ANY</span>
                         </div>
                     </div>
                 </div>
-                <span id="detStatusBadge" class="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-lg">Completed</span>
+                <span id="detStatusBadge" class="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-lg">-</span>
             </div>
 
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider font-mono">PHONE NUMBER</div>
                 <div class="flex items-center justify-between mt-1">
-                    <span class="text-base font-mono font-bold text-white tracking-wider" id="detPhoneNumber">+628572-946-8271</span>
+                    <span class="text-base font-mono font-bold text-white tracking-wider" id="detPhoneNumber">-</span>
                     <button onclick="copyDetPhone()" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center active:scale-90 hover:text-cyan-400">
                         <i class="fa-regular fa-copy text-xs"></i>
                     </button>
@@ -269,7 +269,7 @@
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider font-mono">LAST DETECTED OTP</div>
                 <div class="flex items-center justify-between mt-1">
-                    <span class="text-2xl font-mono font-black text-emerald-400 tracking-wider" id="detOtpCode">50004</span>
+                    <span class="text-2xl font-mono font-black text-emerald-400 tracking-wider" id="detOtpCode">----</span>
                     <button onclick="copyDetOtp()" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center active:scale-90 hover:text-cyan-400">
                         <i class="fa-regular fa-copy text-xs"></i>
                     </button>
@@ -279,36 +279,36 @@
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider font-mono">LATEST SMS</div>
                 <div class="mt-1.5 p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs text-slate-200 font-mono leading-relaxed" id="detSmsBody">
-                    FB-50004 adalah kode konfirmasi Facebook Anda
+                    -
                 </div>
             </div>
 
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 grid grid-cols-2 gap-3 text-xs">
                 <div>
                     <div class="text-[9px] text-slate-400 font-bold uppercase font-mono">SERVICE</div>
-                    <div class="font-bold text-white mt-0.5" id="detMetaService">Facebook</div>
+                    <div class="font-bold text-white mt-0.5" id="detMetaService">-</div>
                 </div>
                 <div>
                     <div class="text-[9px] text-slate-400 font-bold uppercase font-mono">COUNTRY</div>
-                    <div class="font-bold text-white mt-0.5" id="detMetaCountry">🇮🇩 Indonesia</div>
+                    <div class="font-bold text-white mt-0.5" id="detMetaCountry">-</div>
                 </div>
                 <div>
                     <div class="text-[9px] text-slate-400 font-bold uppercase font-mono">PRICE</div>
-                    <div class="font-mono font-bold text-emerald-400 mt-0.5" id="detMetaPrice">🪙 431</div>
+                    <div class="font-mono font-bold text-emerald-400 mt-0.5" id="detMetaPrice">-</div>
                 </div>
                 <div>
                     <div class="text-[9px] text-slate-400 font-bold uppercase font-mono">CREATED</div>
-                    <div class="font-mono text-slate-300 mt-0.5" id="detMetaCreated">06 Oct 2026, 17:55</div>
+                    <div class="font-mono text-slate-300 mt-0.5" id="detMetaCreated">-</div>
                 </div>
             </div>
 
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 space-y-2">
                 <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-white">Messages <span class="text-slate-400 font-mono" id="detMsgCount">(1)</span></span>
+                    <span class="text-xs font-bold text-white">Messages <span class="text-slate-400 font-mono" id="detMsgCount">(0)</span></span>
                 </div>
                 <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono space-y-1">
-                    <div class="text-[10px] text-slate-500" id="detMsgTime">17:57</div>
-                    <div class="text-slate-200 leading-relaxed" id="detMsgText">FB-50004 adalah kode konfirmasi Facebook Anda</div>
+                    <div class="text-[10px] text-slate-500" id="detMsgTime">-</div>
+                    <div class="text-slate-200 leading-relaxed" id="detMsgText">-</div>
                 </div>
             </div>
         </div>
@@ -326,10 +326,10 @@
                 </div>
                 <span class="text-[9px] bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">STREAM LIVE</span>
             </div>
-            <p class="text-[11px] text-slate-400 mb-3">Aktivitas pesanan member yang berhasil mendapatkan SMS verifikasi Facebook secara real-time:</p>
+            <p class="text-[11px] text-slate-400 mb-3" id="txtLiveSubtitle">Aktivitas pesanan member yang berhasil mendapatkan SMS verifikasi Facebook secara real-time:</p>
             <div id="liveConsole" class="space-y-2 max-h-[65vh] overflow-y-auto bg-slate-950/50 p-2.5 rounded-2xl border border-slate-800/80 custom-scrollbar">
                 <div id="consoleEmptyText" class="text-slate-500 italic flex items-center justify-center py-10 text-xs font-bold">
-                    <i class="fa-solid fa-circle-notch fa-spin mr-2 text-blue-400"></i> Menunggu aktivitas member...
+                    <i class="fa-solid fa-circle-notch fa-spin mr-2 text-blue-400"></i> <span id="txtWaitingMemberAct">Menunggu aktivitas member...</span>
                 </div>
             </div>
         </div>
@@ -365,10 +365,10 @@
             <div id="dompetKursRow" onclick="toggleBalanceCurrency()" class="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium text-blue-100 cursor-pointer active:scale-98 transition-transform">
                 <div class="flex items-center gap-1.5">
                     <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
-                    <span>Estimasi Kurs USD / IDR</span>
+                    <span id="txtKursEstLabel">Estimasi Kurs USD / IDR</span>
                 </div>
                 <div class="font-mono font-bold text-white bg-white/20 px-2 py-0.5 rounded-lg border border-white/20" id="dompetKursTxt">
-                    $1.00 ≈ Rp 17.889
+                    -
                 </div>
             </div>
         </div>
@@ -385,21 +385,21 @@
                 <div class="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-base">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                 </div>
-                <span class="text-xs font-bold text-slate-200">History</span>
+                <span class="text-xs font-bold text-slate-200" id="txtGridHistoryLabel">History</span>
             </div>
 
             <div onclick="openTransactionsView()" class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all hover:border-slate-700 shadow-lg">
                 <div class="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-base">
                     <i class="fa-solid fa-receipt"></i>
                 </div>
-                <span class="text-xs font-bold text-slate-200">Transactions</span>
+                <span class="text-xs font-bold text-slate-200" id="txtGridTransactionsLabel">Transactions</span>
             </div>
         </div>
 
         <div class="space-y-2.5">
             <div class="flex justify-between items-center px-1">
-                <div class="text-xs font-bold text-slate-200 tracking-wide">Recent activity</div>
-                <button onclick="openTransactionsView()" class="text-xs font-bold text-blue-400 hover:text-blue-300 active:scale-95">View all</button>
+                <div class="text-xs font-bold text-slate-200 tracking-wide" id="txtRecentActivityLabel">Recent activity</div>
+                <button onclick="openTransactionsView()" class="text-xs font-bold text-blue-400 hover:text-blue-300 active:scale-95" id="txtViewAllLabel">View all</button>
             </div>
             <div class="space-y-2" id="dompetRecentActivityList"></div>
         </div>
@@ -411,7 +411,7 @@
             <button onclick="backToWalletMain()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
-            <h2 class="text-base font-black text-white tracking-wide">Transactions</h2>
+            <h2 class="text-base font-black text-white tracking-wide" id="txtTxPageTitle">Transactions</h2>
             <div class="w-9"></div>
         </div>
 
@@ -430,7 +430,7 @@
             <button onclick="backToWalletMain()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
-            <h2 class="text-base font-black text-white tracking-wide">Deposit</h2>
+            <h2 class="text-base font-black text-white tracking-wide" id="txtDepositPageTitle">Deposit</h2>
             <div class="w-9"></div>
         </div>
 
@@ -440,8 +440,8 @@
                 <i class="fa-solid fa-lock"></i>
             </div>
             <div>
-                <h3 class="text-sm font-black text-white">Deposit Saldo Terkunci</h3>
-                <p class="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed mt-1">
+                <h3 class="text-sm font-black text-white" id="txtDepLockedTitle">Deposit Saldo Terkunci</h3>
+                <p class="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed mt-1" id="txtDepLockedDesc">
                     Pengisian saldo koin akun saat ini hanya dapat diproses langsung oleh Admin. Silakan hubungi admin di bawah untuk melakukan pengisian saldo:
                 </p>
             </div>
@@ -479,8 +479,8 @@
         <!-- RIWAYAT DEPOSIT (MURNI DARI TRANSFER ADMIN) -->
         <div class="space-y-2">
             <div class="text-xs font-bold text-slate-200 px-1 flex items-center justify-between">
-                <span>History Deposit</span>
-                <span class="text-[10px] text-slate-500 font-normal">Otomatis dari Transfer Admin</span>
+                <span id="txtHistDepTitle">History Deposit</span>
+                <span class="text-[10px] text-slate-500 font-normal" id="txtHistDepSubtitle">Otomatis dari Transfer Admin</span>
             </div>
             <div class="space-y-2" id="depositHistoryList"></div>
         </div>
@@ -499,7 +499,7 @@
                             <span class="text-amber-300 text-base">🪙</span>
                             <span id="profilCoinTxt">0</span>
                         </div>
-                        <div class="text-xs text-blue-100 font-medium truncate max-w-[200px]" id="profilUsernameTxt">user@tasksms.com</div>
+                        <div class="text-xs text-blue-100 font-medium truncate max-w-[200px]" id="profilUsernameTxt">-</div>
                     </div>
                 </div>
                 <i class="fa-solid fa-chevron-right text-blue-200 text-sm"></i>
@@ -511,21 +511,21 @@
                     <span id="profilTotalOrdersCard">0 Total Orders</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <i class="fa-regular fa-calendar-days text-xs"></i>
-                    <span id="profilDateJoined">Since 27 Jul 2026</span>
+                    <i class="fa-solid fa-shield-halved text-xs"></i>
+                    <span id="profilRoleBadge">Member</span>
                 </div>
             </div>
         </div>
 
         <div>
-            <div class="text-xs font-bold text-slate-400 mb-2 px-1 tracking-wide">Account</div>
+            <div class="text-xs font-bold text-slate-400 mb-2 px-1 tracking-wide" id="txtSectionAccount">Account</div>
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/60 shadow-lg">
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openTransactionsView()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
                             <i class="fa-solid fa-receipt"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-200">Transactions</span>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuTransactions">Transactions</span>
                     </div>
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
@@ -535,7 +535,7 @@
                         <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm">
                             <i class="fa-solid fa-wallet"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-200">Wallet</span>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuWallet">Wallet</span>
                     </div>
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
@@ -545,7 +545,7 @@
                         <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
                             <i class="fa-solid fa-headset"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-200">Support</span>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuSupport">Support</span>
                     </div>
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
@@ -555,7 +555,7 @@
                         <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-sm">
                             <i class="fa-solid fa-bell"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-200">Notifications</span>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuNotifications">Notifications</span>
                     </div>
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
@@ -563,14 +563,28 @@
         </div>
 
         <div>
-            <div class="text-xs font-bold text-slate-400 mb-2 px-1 tracking-wide">Settings</div>
+            <div class="text-xs font-bold text-slate-400 mb-2 px-1 tracking-wide" id="txtSectionSettings">Settings</div>
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/60 shadow-lg">
+                <!-- MENU PILIH BAHASA (BARU) -->
+                <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openLanguageModal()">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-globe"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuLanguage">Language / Bahasa</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400" id="langCurrentTxt">Bahasa Indonesia</span>
+                        <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
+                    </div>
+                </div>
+
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openThemeModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-sm">
-                            <i class="fa-solid fa-book-open"></i>
+                            <i class="fa-solid fa-palette"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-200">Theme</span>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuTheme">Theme</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-slate-400" id="themeCurrentTxt">System default</span>
@@ -584,8 +598,8 @@
                             <i class="fa-regular fa-bell"></i>
                         </div>
                         <div>
-                            <div class="text-xs font-bold text-slate-200">Push notifications</div>
-                            <div class="text-[10px] text-slate-400 leading-tight mt-0.5">Get alerts for new orders, deposits, and ticket replies</div>
+                            <div class="text-xs font-bold text-slate-200" id="txtMenuPushNotif">Push notifications</div>
+                            <div class="text-[10px] text-slate-400 leading-tight mt-0.5" id="txtMenuPushNotifDesc">Get alerts for new orders, deposits, and ticket replies</div>
                         </div>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer shrink-0">
@@ -599,7 +613,7 @@
                         <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-sm">
                             <i class="fa-solid fa-lock"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-200">Set password</span>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuPassword">Set password</span>
                     </div>
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
@@ -614,22 +628,12 @@
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
 
-                <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openApiTokenModal()">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
-                            <i class="fa-solid fa-key"></i>
-                        </div>
-                        <span class="text-xs font-bold text-slate-200">API Token</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
-                </div>
-
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openSignoutEverywhereModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm">
                             <i class="fa-solid fa-mobile-screen-button"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-200">Sign out everywhere</span>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuSignoutEverywhere">Sign out everywhere</span>
                     </div>
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
@@ -639,7 +643,7 @@
                         <div class="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm">
                             <i class="fa-regular fa-trash-can"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-200">Delete Account</span>
+                        <span class="text-xs font-bold text-slate-200" id="txtMenuDeleteAccount">Delete Account</span>
                     </div>
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
@@ -648,7 +652,7 @@
 
         <button onclick="confirmLogout()" class="w-full py-3 rounded-2xl border border-rose-500/40 text-rose-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-rose-500/10 active:scale-[0.98] transition-all mt-2">
             <i class="fa-solid fa-arrow-right-from-bracket"></i>
-            <span>Sign out</span>
+            <span id="txtBtnSignOut">Sign out</span>
         </button>
     </div>
 
@@ -658,11 +662,11 @@
 <div id="bottomNavBar" style="display:none;" class="fixed bottom-0 left-0 right-0 z-40 bg-[#0D1424]/95 backdrop-blur-md border-t border-slate-800 px-1.5 py-2 flex justify-between items-center select-none shadow-2xl">
     <button id="nav_beranda" onclick="switchBottomTab('beranda')" class="nav-item flex-1 flex flex-col items-center justify-center text-cyan-400 transition-colors py-1">
         <i class="fa-solid fa-house text-sm mb-1"></i>
-        <span class="text-[9px] font-bold tracking-tight">Beranda</span>
+        <span class="text-[9px] font-bold tracking-tight" id="txtNavHome">Beranda</span>
     </button>
     <button id="nav_history" onclick="switchBottomTab('history')" class="nav-item flex-1 flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors py-1">
         <i class="fa-solid fa-clock-rotate-left text-sm mb-1"></i>
-        <span class="text-[9px] font-bold tracking-tight">Orders</span>
+        <span class="text-[9px] font-bold tracking-tight" id="txtNavOrders">Orders</span>
     </button>
     <button id="nav_live" onclick="switchBottomTab('live')" class="nav-item flex-1 flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors py-1 relative">
         <span class="absolute top-0.5 right-4 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
@@ -671,11 +675,11 @@
     </button>
     <button id="nav_dompet" onclick="switchBottomTab('dompet')" class="nav-item flex-1 flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors py-1">
         <i class="fa-solid fa-wallet text-sm mb-1"></i>
-        <span class="text-[9px] font-bold tracking-tight">Dompet</span>
+        <span class="text-[9px] font-bold tracking-tight" id="txtNavWallet">Dompet</span>
     </button>
     <button id="nav_profil" onclick="switchBottomTab('profil')" class="nav-item flex-1 flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 transition-colors py-1">
         <i class="fa-solid fa-user text-sm mb-1"></i>
-        <span class="text-[9px] font-bold tracking-tight">Profil</span>
+        <span class="text-[9px] font-bold tracking-tight" id="txtNavProfil">Profil</span>
     </button>
 </div>
 
