@@ -222,7 +222,7 @@ function setMemberCoinBalance(user, amount) {
 }
 
 function deductMemberBalance(coinAmount) {
-    if (isAdminUser) return; // Admin tidak terpotong koin pribadi
+    if (isAdminUser) return;
     let cur = getMemberCoinBalance();
     let next = Math.max(0, cur - coinAmount);
     setMemberCoinBalance(activeUser, next);
@@ -231,7 +231,7 @@ function deductMemberBalance(coinAmount) {
 }
 
 function checkMemberBalanceState() {
-    if (isAdminUser) return; // Admin bebas beli
+    if (isAdminUser) return;
     let btn = document.getElementById('btnBuy');
     if (!btn) return;
 
@@ -277,7 +277,6 @@ function updateAllBalanceUI(val) {
     let bTitle = document.getElementById('dompetBalanceTitle');
 
     if (isAdminUser) {
-        // ADMIN: Tampilkan Saldo Server
         if (bTitle) bTitle.innerText = 'Saldo Server (Admin Master)';
         let rpVal = Math.round(val * KURS_IDR);
         let rpStr = 'Rp ' + rpVal.toLocaleString('id-ID');
@@ -293,7 +292,7 @@ function updateAllBalanceUI(val) {
             if (profCoin) profCoin.innerText = usdStr;
         }
     } else {
-        // MEMBER: SALDO SERVER DISEMBUNYIKAN TOTAL
+        // MEMBER: SALDO SERVER HILANG TOTAL
         if (bTitle) bTitle.innerText = 'Saldo Koin Saya';
         let memberCoins = getMemberCoinBalance();
         let coinStr = memberCoins.toLocaleString('id-ID');
@@ -348,7 +347,7 @@ function openAdminTransferModal() {
     let html = `
         <div class="space-y-3">
             <p class="text-[11px] text-slate-400 leading-relaxed">
-                Kirim saldo koin ke akun member agar mereka bisa membeli nomor virtual:
+                Kirim saldo koin ke akun member. Riwayat transfer akan langsung masuk ke riwayat deposit member:
             </p>
             <div>
                 <label class="text-[10px] text-slate-400 font-bold uppercase">Username Member Tujuan</label>
@@ -373,17 +372,50 @@ function submitAdminTransferAction() {
     if (!target) return alert('Username member tujuan wajib diisi!');
     if (amt <= 0) return alert('Jumlah koin harus lebih dari 0!');
 
+    // 1. Tambah saldo koin member
     let curBal = getMemberCoinBalance(target);
     let nextBal = curBal + amt;
     setMemberCoinBalance(target, nextBal);
 
-    TaskSmsBridge.pushGlobalLog('Deposit', 'ID', '+' + amt.toLocaleString('id-ID') + ' Koin', 'ADMIN');
+    // 2. Catat otomatis ke History Deposit Member
+    let targetDepHist = getUserDepositHistory(target);
+    let dateObj = new Date();
+    let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
+                  dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    let codeHash = 'TRF-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+
+    targetDepHist.unshift({
+        method: 'TRANSFER ADMIN',
+        code: codeHash,
+        date: dateStr,
+        amount: amt
+    });
+    saveUserDepositHistory(target, targetDepHist);
+
+    TaskSmsBridge.pushGlobalLog('Deposit', 'ID', '+' + amt.toLocaleString('id-ID') + ' Koin -> ' + target, 'ADMIN');
     closeProfModal();
-    alert('Sukses! Berhasil transfer ' + amt.toLocaleString('id-ID') + ' koin ke member: ' + target);
+    alert('Sukses! Berhasil transfer ' + amt.toLocaleString('id-ID') + ' koin ke member: ' + target + '. Telah masuk ke riwayat deposit member.');
 }
 
 // -------------------------------------------------------------
-// RENDER ORDERS TAB & DETAIL VIEW
+// HELPER STORAGE DEPOSIT PER USER (MURNI DARI NOL)
+// -------------------------------------------------------------
+function getUserDepositHistory(u) {
+    let userKey = u || activeUser;
+    if (!userKey) return [];
+    let raw = localStorage.getItem('dep_hist_' + userKey);
+    if (!raw) return [];
+    try { return JSON.parse(raw); } catch(e) { return []; }
+}
+
+function saveUserDepositHistory(u, list) {
+    let userKey = u || activeUser;
+    if (!userKey) return;
+    localStorage.setItem('dep_hist_' + userKey, JSON.stringify(list));
+}
+
+// -------------------------------------------------------------
+// RENDER ORDERS TAB (MURNI DATA ASLI DARI NOL)
 // -------------------------------------------------------------
 function renderOrdersTab() {
     closeOrderDetailView();
@@ -435,7 +467,7 @@ function filterOrdersTab(tab) {
     });
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div class="text-center text-slate-500 py-12 font-bold text-xs">Belum ada pesanan pada kategori ini.</div>';
+        container.innerHTML = '<div class="text-center text-slate-500 py-12 font-bold text-xs">Belum ada riwayat pesanan.</div>';
         return;
     }
 
@@ -446,6 +478,7 @@ function buildUnifiedOrdersList() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let list = [];
 
+    // 1. Order yang sedang aktif di memory
     for (let id in taskOrders) {
         let to = taskOrders[id];
         let p = parseFloat(to.price || 0.009);
@@ -466,16 +499,11 @@ function buildUnifiedOrdersList() {
         });
     }
 
+    // 2. Order selesai dari database asli (TANPA MOCK DATA)
     if (hist && hist.length > 0) {
         hist.forEach((h, idx) => {
             let p = parseFloat(h.price || 0.009);
             let coinPrice = Math.max(161, Math.round(p * KURS_IDR));
-            let isExpired = (idx % 5 === 4);
-            let isCanceled = (idx % 6 === 5);
-            let stat = 'completed';
-            if (isExpired) stat = 'expired';
-            else if (isCanceled) stat = 'canceled';
-
             list.push({
                 id: h.id || (17600000 + idx).toString(),
                 service: h.svc || 'Facebook',
@@ -483,26 +511,14 @@ function buildUnifiedOrdersList() {
                 flag: '🇮🇩',
                 carrier: h.opTag || 'ANY',
                 phone: '+' + h.num,
-                otp: h.code || '50004',
-                sms: (h.svc || 'FB') + '-' + (h.code || '50004') + ' adalah kode konfirmasi akun Anda',
-                date: h.date || '06 Oct 2026, 17:55',
-                status: stat,
+                otp: h.code || '----',
+                sms: (h.svc || 'FB') + '-' + (h.code || '----') + ' adalah kode konfirmasi akun Anda',
+                date: h.date || 'Baru Saja',
+                status: 'completed',
                 coinPrice: coinPrice,
                 usdPrice: p.toFixed(3)
             });
         });
-    }
-
-    if (list.length < 5) {
-        let mockData = [
-            { id: '17632599', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'ANY', phone: '+628572-946-8271', otp: '50004', sms: 'FB-50004 adalah kode konfirmasi Facebook Anda', date: '06 Oct 2026, 17:55', status: 'completed', coinPrice: 431, usdPrice: '0.024' },
-            { id: '17632511', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'INDOSAT', phone: '+628564-906-4377', otp: '95776', sms: 'FB-95776 adalah kode konfirmasi Facebook Anda', date: '06 Oct 2026, 16:18', status: 'completed', coinPrice: 431, usdPrice: '0.024' },
-            { id: '17632488', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'INDOSAT', phone: '+628589-106-5298', otp: '88697', sms: 'FB-88697 adalah kode konfirmasi Facebook Anda', date: '06 Oct 2026, 16:15', status: 'completed', coinPrice: 431, usdPrice: '0.024' },
-            { id: '17632402', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'INDOSAT', phone: '+628570-250-2062', otp: '94915', sms: 'FB-94915 adalah kode konfirmasi Facebook Anda', date: '06 Oct 2026, 16:12', status: 'completed', coinPrice: 431, usdPrice: '0.024' },
-            { id: '17631980', service: 'Dana', country: 'Indonesia', flag: '🇮🇩', carrier: 'ANY', phone: '+628123-433-5549', otp: '15890', sms: 'Jangan berikan kode OTP 15890 DANA ini kepada siapapun.', date: '04 Oct 2026, 19:12', status: 'expired', coinPrice: 158, usdPrice: '0.009' },
-            { id: '17631855', service: 'Facebook', country: 'Indonesia', flag: '🇮🇩', carrier: 'ANY', phone: '+628560-793-6430', otp: '43312', sms: 'FB-43312 adalah kode konfirmasi Facebook Anda', date: '02 Oct 2026, 19:21', status: 'canceled', coinPrice: 433, usdPrice: '0.024' }
-        ];
-        list = list.concat(mockData);
     }
 
     return list;
@@ -667,7 +683,7 @@ function filterTransactionsView(type) {
     let container = document.getElementById('transactionsFullList');
     if (!container) return;
 
-    let items = buildMockTransactionItems(hist);
+    let items = buildActualTransactionItems(hist);
     let filtered = items.filter(it => {
         if (type === 'credits') return it.type === 'refund';
         if (type === 'debits') return it.type === 'debit';
@@ -697,7 +713,7 @@ function submitDepositAction() {
     let amt = parseInt(inp ? inp.value : 0) || 0;
     if (amt < 10000) return alert('Minimal deposit adalah Rp 10.000!');
     
-    let depHist = JSON.parse(TaskSmsBridge.getUserPref('deposit_history', '[]'));
+    let depHist = getUserDepositHistory(activeUser);
     let dateObj = new Date();
     let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
                   dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -710,10 +726,10 @@ function submitDepositAction() {
         amount: amt
     });
 
-    TaskSmsBridge.saveUserPref('deposit_history', JSON.stringify(depHist));
+    saveUserDepositHistory(activeUser, depHist);
     if (inp) inp.value = '';
 
-    alert('Deposit ' + selectedDepMethod.toUpperCase() + ' sebesar ' + amt.toLocaleString('id-ID') + ' koin berhasil dibuat! Silakan hubungi admin untuk konfirmasi.');
+    alert('Deposit ' + selectedDepMethod.toUpperCase() + ' sebesar ' + amt.toLocaleString('id-ID') + ' koin berhasil dibuat! Silakan hubungi admin untuk konfirmasi pembayaran.');
     renderDepositHistory();
 }
 
@@ -721,28 +737,9 @@ function renderDepositHistory() {
     let container = document.getElementById('depositHistoryList');
     if (!container) return;
 
-    let depHist = JSON.parse(TaskSmsBridge.getUserPref('deposit_history', '[]'));
+    let depHist = getUserDepositHistory(activeUser);
     if (depHist.length === 0) {
-        container.innerHTML = `
-            <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
-                        <i class="fa-solid fa-wallet"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                            <span>QRIS</span>
-                            <span class="text-[9px] text-slate-500 font-mono">6fdac6c...</span>
-                        </div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">24 Sep 2026, 23:35</div>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-xs font-mono font-bold text-white">🪙 10,000</div>
-                    <span class="inline-block mt-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ Credited</span>
-                </div>
-            </div>
-        `;
+        container.innerHTML = '<div class="text-center text-slate-500 py-8 font-bold text-xs">Belum ada riwayat deposit.</div>';
         return;
     }
 
@@ -769,13 +766,12 @@ function renderDepositHistory() {
 }
 
 // -------------------------------------------------------------
-// RENDER DOMPET UTAMA
+// RENDER DOMPET UTAMA (MURNI DATA ASLI DARI NOL)
 // -------------------------------------------------------------
 function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     balanceCurrencyMode = TaskSmsBridge.getUserPref('balance_currency_mode', 'USD');
     
-    // Sesuaikan tombol Dompet sesuai Hak Akses
     let actionBtnLabel = document.getElementById('dompetMainActionLabel');
     let actionBtnIcon = document.getElementById('dompetMainActionIcon');
     let gridActionLabel = document.getElementById('gridFirstActionLabel');
@@ -786,6 +782,7 @@ function renderDompetTab() {
         if (actionBtnIcon) actionBtnIcon.className = 'fa-solid fa-paper-plane text-sm';
         if (gridActionLabel) gridActionLabel.innerText = 'Kirim Saldo';
         if (gridActionFa) gridActionFa.className = 'fa-solid fa-paper-plane';
+        TaskSmsBridge.getMasterServerBalance();
     } else {
         if (actionBtnLabel) actionBtnLabel.innerText = 'Top up';
         if (actionBtnIcon) actionBtnIcon.className = 'fa-solid fa-circle-plus text-sm';
@@ -793,9 +790,6 @@ function renderDompetTab() {
         if (gridActionFa) gridActionFa.className = 'fa-solid fa-circle-plus';
     }
 
-    if (isAdminUser) {
-        TaskSmsBridge.getMasterServerBalance();
-    }
     updateAllBalanceUI(lastServerBalanceUsd);
 
     let dKurs = document.getElementById('dompetKursTxt');
@@ -810,56 +804,54 @@ function renderDompetRecentActivity(hist) {
     let container = document.getElementById('dompetRecentActivityList');
     if (!container) return;
 
-    let items = buildMockTransactionItems(hist).slice(0, 8);
+    let items = buildActualTransactionItems(hist).slice(0, 8);
+    if (items.length === 0) {
+        container.innerHTML = '<div class="text-center text-slate-500 py-8 font-bold text-xs">Belum ada riwayat aktivitas transaksi.</div>';
+        return;
+    }
     container.innerHTML = items.map(it => renderTransactionCardHtml(it)).join('');
 }
 
-function buildMockTransactionItems(hist) {
+function buildActualTransactionItems(hist) {
     let items = [];
+    let curBal = isAdminUser ? (lastServerBalanceUsd * KURS_IDR) : getMemberCoinBalance();
+
     if (hist && hist.length > 0) {
-        let runningBal = isAdminUser ? 6328 : getMemberCoinBalance();
-        hist.forEach((h, idx) => {
-            let isRefund = (idx % 4 === 3);
+        hist.forEach((h) => {
             let p = parseFloat(h.price || 0.009);
             let costCoin = Math.max(161, Math.round(p * KURS_IDR));
             let costUsd = p.toFixed(3);
 
-            if (isRefund) {
-                runningBal += costCoin;
-                items.push({
-                    type: 'refund',
-                    title: 'Order refund',
-                    sub: 'Order canceled — refund',
-                    date: h.date || '04 Oct 2026, 19:37',
-                    coinCost: costCoin.toLocaleString('id-ID'),
-                    usdCost: costUsd,
-                    coinBalance: runningBal.toLocaleString('id-ID'),
-                    usdBalance: (runningBal / KURS_IDR).toFixed(3)
-                });
-            } else {
-                runningBal = Math.max(0, runningBal - costCoin);
-                items.push({
-                    type: 'debit',
-                    title: 'Order debit',
-                    sub: 'Order payment',
-                    date: h.date || '06 Oct 2026, 17:55',
-                    coinCost: costCoin.toLocaleString('id-ID'),
-                    usdCost: costUsd,
-                    coinBalance: runningBal.toLocaleString('id-ID'),
-                    usdBalance: (runningBal / KURS_IDR).toFixed(3)
-                });
-            }
+            items.push({
+                type: 'debit',
+                title: 'Order debit',
+                sub: 'Order payment (' + (h.svc || 'Facebook') + ')',
+                date: h.date || 'Baru Saja',
+                coinCost: costCoin.toLocaleString('id-ID'),
+                usdCost: costUsd,
+                coinBalance: curBal.toLocaleString('id-ID'),
+                usdBalance: (curBal / KURS_IDR).toFixed(3)
+            });
         });
     }
 
-    if (items.length < 5) {
-        let mb = getMemberCoinBalance();
-        items = [
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 17:55', coinCost: '431', usdCost: '0.024', coinBalance: mb.toLocaleString('id-ID'), usdBalance: (mb / KURS_IDR).toFixed(3) },
-            { type: 'debit', title: 'Order debit', sub: 'Order payment', date: '06 Oct 2026, 16:18', coinCost: '431', usdCost: '0.024', coinBalance: (mb + 431).toLocaleString('id-ID'), usdBalance: ((mb + 431) / KURS_IDR).toFixed(3) },
-            { type: 'refund', title: 'Order refund', sub: 'Order canceled — refund', date: '04 Oct 2026, 19:37', coinCost: '158', usdCost: '0.009', coinBalance: (mb + 589).toLocaleString('id-ID'), usdBalance: ((mb + 589) / KURS_IDR).toFixed(3) }
-        ];
+    // Masukkan mutasi deposit transfer jika ada
+    let depHist = getUserDepositHistory(activeUser);
+    if (depHist && depHist.length > 0) {
+        depHist.forEach(dh => {
+            items.unshift({
+                type: 'refund',
+                title: 'Deposit saldo',
+                sub: dh.method,
+                date: dh.date,
+                coinCost: dh.amount.toLocaleString('id-ID'),
+                usdCost: (dh.amount / KURS_IDR).toFixed(3),
+                coinBalance: curBal.toLocaleString('id-ID'),
+                usdBalance: (curBal / KURS_IDR).toFixed(3)
+            });
+        });
     }
+
     return items;
 }
 
@@ -1628,7 +1620,7 @@ function onGetNumberResult(res) {
             renderOrderCardUI(d.idNum, d.tel, curPriceNum, selectedOperatorLabel.toUpperCase(), null, 'Menunggu SMS masuk dari server...', timeStr, true, 'vak');
             activeIds.push(d.idNum);
             
-            // POTONG SALDO MEMBER JIKA ORDER BERHASIL
+            // Potong saldo koin member secara otomatis
             let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
             deductMemberBalance(orderCostCoins);
 
