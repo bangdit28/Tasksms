@@ -19,6 +19,7 @@ let currentHistPage = 1;
 const HIST_PER_PAGE = 10;
 let isDropdownOpen = false;
 let lastServerBalanceUsd = 0;
+let balanceCurrencyMode = 'USD'; // 'USD' atau 'IDR'
 
 const DIAL_MAP = {
     '1':   { name: 'USA/Canada', iso: 'us' },
@@ -167,6 +168,7 @@ fetch('https://open.er-api.com/v6/latest/USD').then(res => res.json()).then(data
 
 setTimeout(() => { 
     initAppTheme();
+    balanceCurrencyMode = TaskSmsBridge.getUserPref('balance_currency_mode', 'USD');
     TaskSmsBridge.checkSession(); 
 }, 400);
 
@@ -195,23 +197,34 @@ function switchBottomTab(tab) {
     }
 }
 
+// TOGGLE MATA UANG SALDO (USD ⇄ IDR)
+function toggleBalanceCurrency() {
+    balanceCurrencyMode = (balanceCurrencyMode === 'USD') ? 'IDR' : 'USD';
+    TaskSmsBridge.saveUserPref('balance_currency_mode', balanceCurrencyMode);
+    updateAllBalanceUI(lastServerBalanceUsd);
+    try { navigator.vibrate(35); } catch(e) {}
+}
+
 function updateAllBalanceUI(val) {
     let rpStr = formatRupiahOnly(val);
+    let usdStr = '$' + val.toFixed(3);
     
     // Sinkronisasi ke Tab Dompet
     let dompetBal = document.getElementById('dompetTotalBalanceTxt');
     let dompetSub = document.getElementById('dompetSubBalanceTxt');
-    if (dompetBal) {
-        dompetBal.innerText = '$' + val.toFixed(3);
-    }
-    if (dompetSub) {
-        dompetSub.innerText = '~ ' + rpStr;
+    
+    if (balanceCurrencyMode === 'IDR') {
+        if (dompetBal) dompetBal.innerText = rpStr;
+        if (dompetSub) dompetSub.innerText = '~ ' + usdStr + ' (Ketuk Kurs untuk ganti)';
+    } else {
+        if (dompetBal) dompetBal.innerText = usdStr;
+        if (dompetSub) dompetSub.innerText = '~ ' + rpStr + ' (Ketuk Kurs untuk ganti)';
     }
 
     // Sinkronisasi ke Tab Profil
     let profCoin = document.getElementById('profilCoinTxt');
     if (profCoin) {
-        profCoin.innerText = '$' + val.toFixed(3);
+        profCoin.innerText = (balanceCurrencyMode === 'IDR') ? rpStr : usdStr;
     }
 }
 
@@ -226,13 +239,29 @@ function onGetMasterBalanceResult(res) {
 
 function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
+    balanceCurrencyMode = TaskSmsBridge.getUserPref('balance_currency_mode', 'USD');
     
-    // Perbarui saldo secara live dari server
     TaskSmsBridge.getMasterServerBalance();
     updateAllBalanceUI(lastServerBalanceUsd);
 
     let dKurs = document.getElementById('dompetKursTxt');
-    if(dKurs) dKurs.innerText = '$1.00 ≈ ' + formatRupiahOnly(1);
+    if(dKurs) {
+        dKurs.innerText = '$1.00 ≈ ' + formatRupiahOnly(1);
+        
+        // Buat bar estimasi kurs bisa diklik untuk toggle mata uang
+        if (dKurs.parentElement) {
+            dKurs.parentElement.onclick = toggleBalanceCurrency;
+            dKurs.parentElement.style.cursor = 'pointer';
+            dKurs.parentElement.classList.add('active:scale-98', 'transition-transform');
+        }
+    }
+
+    // Buat kartu saldo atas juga bisa diklik
+    let dompetBal = document.getElementById('dompetTotalBalanceTxt');
+    if (dompetBal && dompetBal.parentElement) {
+        dompetBal.parentElement.onclick = toggleBalanceCurrency;
+        dompetBal.parentElement.style.cursor = 'pointer';
+    }
 
     renderDompetRecentActivity(hist);
 }
@@ -361,10 +390,7 @@ function renderProfilTab() {
     let ordEl = document.getElementById('profilTotalOrdersCard');
     if (ordEl) ordEl.innerText = hist.length + ' Total Orders';
 
-    let profCoin = document.getElementById('profilCoinTxt');
-    if (profCoin) {
-        profCoin.innerText = '$' + lastServerBalanceUsd.toFixed(3);
-    }
+    updateAllBalanceUI(lastServerBalanceUsd);
 
     let pushState = TaskSmsBridge.getUserPref('push_notif_enabled', 'true');
     let sw = document.getElementById('pushNotifSwitch');
