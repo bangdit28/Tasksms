@@ -59,6 +59,52 @@
 
     <!-- VIEW 1: BERANDA -->
     <div id="view_beranda" class="view-pane space-y-3.5">
+        
+        <!-- TOP GREETING & NOTIFIKASI LONCENG (PERSIS SCREENSHOT 1) -->
+        <div class="flex items-center justify-between pt-1 pb-1">
+            <div>
+                <h1 class="text-xl font-black text-white tracking-tight flex items-center gap-1">
+                    Hi, <span id="homeUserGreeting">User</span>!
+                </h1>
+                <p class="text-xs text-slate-400 font-medium mt-0.5">Let's get your number</p>
+            </div>
+            <div onclick="openNotificationsView()" class="relative w-11 h-11 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-white cursor-pointer active:scale-90 transition-transform shadow-md">
+                <i class="fa-regular fa-bell text-base"></i>
+                <span id="notifBadgeCount" class="absolute -top-1 -right-1 bg-rose-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full border-2 border-[#070B14]">99+</span>
+            </div>
+        </div>
+
+        <!-- BLUE STATS CARD (HOMEPAGE HEADER) -->
+        <div class="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 rounded-3xl p-5 text-white shadow-xl shadow-blue-500/15 cursor-pointer active:scale-[0.99] transition-transform select-none" onclick="switchBottomTab('dompet')">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-13 h-13 min-w-[50px] min-h-[50px] bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white text-2xl border border-white/30 shadow-inner">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5 font-black text-2xl tracking-tight">
+                            <span class="text-amber-300 text-lg">🪙</span>
+                            <span id="homeBalanceCoins">0</span>
+                        </div>
+                        <div class="text-xs text-blue-100 font-medium truncate max-w-[200px]" id="homeUserEmail">user@tasksms.com</div>
+                    </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-blue-200 text-sm"></i>
+            </div>
+            
+            <div class="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium text-blue-100">
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check text-xs"></i>
+                    <span id="homeTotalOrders">0 Total Orders</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-star text-xs text-amber-300"></i>
+                    <span id="homeSuccessRate">100% Success Rate</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- FB SERVICE REFRESH -->
         <div class="glass-card p-3 border border-blue-500/30 cursor-pointer active:scale-[0.98] transition-transform select-none" onclick="onServiceFbClick()">
             <div class="w-full py-3 px-3.5 rounded-xl bg-gradient-to-r from-blue-900/40 via-blue-800/20 to-slate-900/80 border border-blue-500/40 flex items-center justify-between shadow-lg">
                 <div class="flex items-center gap-3">
@@ -74,6 +120,7 @@
             </div>
         </div>
 
+        <!-- PILIHAN NEGARA -->
         <div class="glass-card p-3.5 relative">
             <div class="flex justify-between items-center mb-2 px-1">
                 <div class="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase">PILIH NEGARA (<span id="totalCountriesTxt" class="text-cyan-400">1</span>)</div>
@@ -149,6 +196,21 @@
         </div>
 
         <div id="activeOrders"></div>
+    </div>
+
+    <!-- SUBVIEW: NOTIFICATIONS (SESUAI SCREENSHOT 2) -->
+    <div id="subview_notifications" class="view-pane space-y-4" style="display: none;">
+        <div class="flex items-center justify-between py-1">
+            <button onclick="backToHomeFromNotif()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <h2 class="text-base font-black text-white tracking-wide">Notifications</h2>
+            <button onclick="markAllNotifsRead()" class="text-xs font-bold text-blue-400 hover:text-blue-300 active:scale-95">
+                Mark all read
+            </button>
+        </div>
+
+        <div class="space-y-2.5 max-h-[75vh] overflow-y-auto custom-scrollbar pr-0.5" id="notificationsListContainer"></div>
     </div>
 
     <!-- VIEW 2: ORDERS / ORDER HISTORY -->
@@ -275,8 +337,6 @@
 
     <!-- VIEW 4: WALLET / DOMPET UTAMA -->
     <div id="view_dompet" class="view-pane space-y-4" style="display: none;">
-        
-        <!-- TOP BALANCE CARD (WALLET HEADER DINAMIS ADMIN / MEMBER) -->
         <div class="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 rounded-3xl p-5 text-white shadow-xl shadow-blue-500/15 relative overflow-hidden">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3.5">
@@ -296,14 +356,12 @@
                     </div>
                 </div>
                 
-                <!-- TOMBOL ACTION: ADMIN = TRANSFER, MEMBER = TOPUP -->
                 <button id="dompetMainActionBtn" onclick="handleMainWalletAction()" class="bg-white hover:bg-slate-100 text-blue-600 font-black text-xs px-4 py-2 rounded-full shadow-md flex items-center gap-1.5 active:scale-95 transition-all">
                     <i id="dompetMainActionIcon" class="fa-solid fa-circle-plus text-sm"></i>
                     <span id="dompetMainActionLabel">Top up</span>
                 </button>
             </div>
 
-            <!-- ESTIMASI KURS USD / IDR BAR (HANYA MUNCUL DI ADMIN / MODE KONVERSI) -->
             <div id="dompetKursRow" onclick="toggleBalanceCurrency()" class="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium text-blue-100 cursor-pointer active:scale-98 transition-transform">
                 <div class="flex items-center gap-1.5">
                     <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
@@ -315,7 +373,6 @@
             </div>
         </div>
 
-        <!-- 3 ACTION BUTTONS (DEPOSIT/TRANSFER, HISTORY, TRANSACTIONS) -->
         <div class="grid grid-cols-3 gap-2.5">
             <div onclick="handleFirstGridAction()" class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all hover:border-slate-700 shadow-lg">
                 <div id="gridFirstActionIcon" class="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-base">
@@ -339,7 +396,6 @@
             </div>
         </div>
 
-        <!-- RECENT ACTIVITY SECTION -->
         <div class="space-y-2.5">
             <div class="flex justify-between items-center px-1">
                 <div class="text-xs font-bold text-slate-200 tracking-wide">Recent activity</div>
@@ -368,7 +424,7 @@
         <div class="space-y-2.5 max-h-[65vh] overflow-y-auto custom-scrollbar pr-0.5" id="transactionsFullList"></div>
     </div>
 
-    <!-- SUBVIEW: DEPOSIT (HANYA UNTUK MEMBER) -->
+    <!-- SUBVIEW: DEPOSIT -->
     <div id="subview_deposit" class="view-pane space-y-4" style="display: none;">
         <div class="flex items-center justify-between py-1">
             <button onclick="backToWalletMain()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
