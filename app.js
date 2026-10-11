@@ -20,7 +20,6 @@ let lastServerBalanceUsd = 0;
 let balanceCurrencyMode = 'USD'; // 'USD' atau 'IDR'
 let currentTxFilter = 'all';
 let currentOrderTab = 'all';
-let selectedDepMethod = 'qris';
 let currentOpenedOrder = null;
 
 const DIAL_MAP = {
@@ -213,18 +212,16 @@ function renderHomeHeader() {
     let eEl = document.getElementById('homeUserEmail');
     if (eEl) eEl.innerText = u.includes('@') ? u : (u + '@gmail.com');
 
-    // Total orders & Success Rate
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let totEl = document.getElementById('homeTotalOrders');
     if (totEl) totEl.innerText = hist.length + ' Total Orders';
 
     let rateEl = document.getElementById('homeSuccessRate');
     if (rateEl) {
-        let rate = hist.length > 0 ? '98%' : '100%';
+        let rate = hist.length > 0 ? '100%' : '0%';
         rateEl.innerText = rate + ' Success Rate';
     }
 
-    // Saldo di Kartu Biru Beranda
     let bEl = document.getElementById('homeBalanceCoins');
     if (bEl) {
         if (isAdminUser) {
@@ -241,19 +238,7 @@ function renderHomeHeader() {
 
 function getNotificationsList() {
     let raw = localStorage.getItem('notifs_' + (activeUser || 'user'));
-    if (!raw) {
-        // Sample notifikasi awal persis seperti screenshot 2
-        let initial = [
-            { id: '17832599', type: 'completed', title: 'Facebook — Completed', desc: 'Order #17832599 (Indonesia)', time: '5d ago', unread: false },
-            { id: '17832599', type: 'otp', title: 'Facebook — OTP Received', desc: 'Order #17832599 (Indonesia)', time: '5d ago', unread: false },
-            { id: '17814012', type: 'completed', title: 'Facebook — Completed', desc: 'Order #17814012 (Indonesia)', time: '5d ago', unread: true },
-            { id: '17814012', type: 'otp', title: 'Facebook — OTP Received', desc: 'Order #17814012 (Indonesia)', time: '5d ago', unread: true },
-            { id: '17813441', type: 'completed', title: 'Facebook — Completed', desc: 'Order #17813441 (Indonesia)', time: '5d ago', unread: true },
-            { id: '17813441', type: 'otp', title: 'Facebook — OTP Received', desc: 'Order #17813441 (Indonesia)', time: '5d ago', unread: true }
-        ];
-        saveNotificationsList(initial);
-        return initial;
-    }
+    if (!raw) return [];
     try { return JSON.parse(raw); } catch(e) { return []; }
 }
 
@@ -319,7 +304,7 @@ function renderNotificationsList() {
 
     let list = getNotificationsList();
     if (list.length === 0) {
-        container.innerHTML = '<div class="text-center text-slate-500 py-16 font-bold text-xs">Belum ada pemberitahuan notifikasi.</div>';
+        container.innerHTML = '<div class="text-center text-slate-500 py-16 font-bold text-xs"><i class="fa-regular fa-bell-slash mr-1"></i> Belum ada pemberitahuan notifikasi.</div>';
         return;
     }
 
@@ -352,8 +337,6 @@ function clickNotificationItem(orderId) {
     if (it) it.unread = false;
     saveNotificationsList(list);
     renderNotificationsList();
-
-    // Buka order detail jika ada
     switchBottomTab('history');
 }
 
@@ -486,7 +469,7 @@ function handleRefreshSaldo() {
 }
 
 // -------------------------------------------------------------
-// ACTION BUTTONS DOMPET (ADMIN = TRANSFER, MEMBER = DEPOSIT)
+// ACTION BUTTONS DOMPET (ADMIN = TRANSFER, MEMBER = DEPOSIT VIEW)
 // -------------------------------------------------------------
 function handleMainWalletAction() {
     if (isAdminUser) {
@@ -508,7 +491,7 @@ function openAdminTransferModal() {
     let html = `
         <div class="space-y-3">
             <p class="text-[11px] text-slate-400 leading-relaxed">
-                Kirim saldo koin ke akun member. Riwayat transfer akan langsung masuk ke riwayat deposit member:
+                Kirim saldo koin ke akun member. Riwayat transfer akan langsung masuk ke riwayat deposit akun member:
             </p>
             <div>
                 <label class="text-[10px] text-slate-400 font-bold uppercase">Username Member Tujuan</label>
@@ -533,10 +516,12 @@ function submitAdminTransferAction() {
     if (!target) return alert('Username member tujuan wajib diisi!');
     if (amt <= 0) return alert('Jumlah koin harus lebih dari 0!');
 
+    // 1. Tambah saldo koin member
     let curBal = getMemberCoinBalance(target);
     let nextBal = curBal + amt;
     setMemberCoinBalance(target, nextBal);
 
+    // 2. Catat otomatis ke History Deposit Member yang menerima
     let targetDepHist = getUserDepositHistory(target);
     let dateObj = new Date();
     let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
@@ -553,9 +538,12 @@ function submitAdminTransferAction() {
 
     TaskSmsBridge.pushGlobalLog('Deposit', 'ID', '+' + amt.toLocaleString('id-ID') + ' Koin -> ' + target, 'ADMIN');
     closeProfModal();
-    alert('Sukses! Berhasil transfer ' + amt.toLocaleString('id-ID') + ' koin ke member: ' + target);
+    alert('Sukses! Berhasil transfer ' + amt.toLocaleString('id-ID') + ' koin ke member: ' + target + '. Telah masuk ke riwayat deposit member.');
 }
 
+// -------------------------------------------------------------
+// HELPER STORAGE DEPOSIT PER USER (MURNI DARI NOL)
+// -------------------------------------------------------------
 function getUserDepositHistory(u) {
     let userKey = u || activeUser;
     if (!userKey) return [];
@@ -570,8 +558,40 @@ function saveUserDepositHistory(u, list) {
     localStorage.setItem('dep_hist_' + userKey, JSON.stringify(list));
 }
 
+function renderDepositHistory() {
+    let container = document.getElementById('depositHistoryList');
+    if (!container) return;
+
+    let depHist = getUserDepositHistory(activeUser);
+    if (depHist.length === 0) {
+        container.innerHTML = '<div class="text-center text-slate-500 py-10 font-bold text-xs"><i class="fa-solid fa-clock-rotate-left mr-1"></i> Belum ada riwayat deposit. Saldo akan otomatis tercatat di sini saat Admin melakukan transfer.</div>';
+        return;
+    }
+
+    container.innerHTML = depHist.map(it => `
+        <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>${it.method}</span>
+                        <span class="text-[9px] text-slate-500 font-mono">${it.code}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">${it.date}</div>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs font-mono font-bold text-white">🪙 ${it.amount.toLocaleString('id-ID')}</div>
+                <span class="inline-block mt-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ Credited</span>
+            </div>
+        </div>
+    `).join('');
+}
+
 // -------------------------------------------------------------
-// RENDER ORDERS TAB (MURNI DATA ASLI DARI NOL)
+// RENDER ORDERS TAB (MURNI DARI DATA ASLI)
 // -------------------------------------------------------------
 function renderOrdersTab() {
     closeOrderDetailView();
@@ -852,75 +872,8 @@ function filterTransactionsView(type) {
     container.innerHTML = filtered.map(it => renderTransactionCardHtml(it)).join('');
 }
 
-function selectDepositMethod(method, el) {
-    selectedDepMethod = method;
-    document.querySelectorAll('.dep-method-item').forEach(item => {
-        item.className = 'dep-method-item p-3 rounded-2xl border border-slate-800 bg-slate-900/60 flex items-center justify-between cursor-pointer active:scale-98 transition-all';
-    });
-    if (el) {
-        el.className = 'dep-method-item active p-3 rounded-2xl border border-blue-500 bg-blue-500/10 flex items-center justify-between cursor-pointer active:scale-98 transition-all';
-    }
-}
-
-function submitDepositAction() {
-    let inp = document.getElementById('inpDepositAmount');
-    let amt = parseInt(inp ? inp.value : 0) || 0;
-    if (amt < 10000) return alert('Minimal deposit adalah Rp 10.000!');
-    
-    let depHist = getUserDepositHistory(activeUser);
-    let dateObj = new Date();
-    let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
-                  dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    let codeHash = Math.random().toString(36).substring(2, 9) + '...';
-
-    depHist.unshift({
-        method: selectedDepMethod.toUpperCase(),
-        code: codeHash,
-        date: dateStr,
-        amount: amt
-    });
-
-    saveUserDepositHistory(activeUser, depHist);
-    if (inp) inp.value = '';
-
-    alert('Deposit ' + selectedDepMethod.toUpperCase() + ' sebesar ' + amt.toLocaleString('id-ID') + ' koin berhasil dibuat! Silakan hubungi admin untuk konfirmasi pembayaran.');
-    renderDepositHistory();
-}
-
-function renderDepositHistory() {
-    let container = document.getElementById('depositHistoryList');
-    if (!container) return;
-
-    let depHist = getUserDepositHistory(activeUser);
-    if (depHist.length === 0) {
-        container.innerHTML = '<div class="text-center text-slate-500 py-8 font-bold text-xs">Belum ada riwayat deposit.</div>';
-        return;
-    }
-
-    container.innerHTML = depHist.map(it => `
-        <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3.5 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
-                    <i class="fa-solid fa-wallet"></i>
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>${it.method}</span>
-                        <span class="text-[9px] text-slate-500 font-mono">${it.code}</span>
-                    </div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">${it.date}</div>
-                </div>
-            </div>
-            <div class="text-right">
-                <div class="text-xs font-mono font-bold text-white">🪙 ${it.amount.toLocaleString('id-ID')}</div>
-                <span class="inline-block mt-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ Credited</span>
-            </div>
-        </div>
-    `).join('');
-}
-
 // -------------------------------------------------------------
-// RENDER DOMPET UTAMA (MURNI DATA ASLI DARI NOL)
+// RENDER DOMPET UTAMA (MURNI DATA ASLI)
 // -------------------------------------------------------------
 function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
@@ -960,7 +913,7 @@ function renderDompetRecentActivity(hist) {
 
     let items = buildActualTransactionItems(hist).slice(0, 8);
     if (items.length === 0) {
-        container.innerHTML = '<div class="text-center text-slate-500 py-8 font-bold text-xs">Belum ada riwayat aktivitas transaksi.</div>';
+        container.innerHTML = '<div class="text-center text-slate-500 py-8 font-bold text-xs"><i class="fa-solid fa-receipt mr-1"></i> Belum ada riwayat aktivitas transaksi.</div>';
         return;
     }
     container.innerHTML = items.map(it => renderTransactionCardHtml(it)).join('');
@@ -1497,7 +1450,7 @@ function applyReceivedSms(id, code, fullText) {
         try { navigator.vibrate([150, 80, 150]); } catch(e){}
         try { TaskSmsBridge.showOtpNotification(code, fullText); } catch(e){}
 
-        // Catat Otomatis ke Notifikasi Statusbar Aplikasi
+        // Catat Otomatis ke Notifikasi
         pushNewNotification('Facebook — OTP Received', 'Order #' + id + ' (' + (ord.ctry || 'Indonesia') + ')', id);
 
         saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag);
@@ -1923,7 +1876,6 @@ function finishOrder(id) {
     let ord = taskOrders[id];
     if (ord && ord.provider === 'vak') { TaskSmsBridge.cancelNumberVak(id); }
     
-    // Catat notifikasi completed
     pushNewNotification('Facebook — Completed', 'Order #' + id + ' (' + (ord ? ord.ctry : 'Indonesia') + ')', id);
 
     delete taskOrders[id];
