@@ -8,7 +8,7 @@ let selectedCountryIso = 'id';
 let selectedOperatorSlug = ''; 
 let selectedOperatorLabel = 'ANY';
 let liveCountryMap = {};
-// HARGA DIPATENKAN LANGSUNG 0.009 USD (INSTAN TANPA LOADING LAMA)
+// HARGA INSTAN PATEN 0.009 USD
 let curPriceStr = '0.009'; 
 let curPriceNum = 0.009;
 let activeIds = []; 
@@ -313,7 +313,7 @@ const DIAL_MAP = {
     '998': { name: 'Uzbekistan', iso: 'uz' }
 };
 
-// DAFTAR OPERATOR LENGKAP VAK-SMS INDONESIA
+// DAFTAR OPERATOR VAK-SMS INDONESIA
 const indoOperators = [
     { label: 'Any', slug: '', icon: 'fa-solid fa-chart-simple', type: 'any' },
     { label: 'Telkomsel', slug: 'telkomsel', file: 'telkomsel.png', type: 'logo', initial: 'T', col: 'bg-red-600' },
@@ -685,10 +685,16 @@ function updateAllBalanceUI(val) {
     }
 }
 
+// PARSE RESPONSE TYPE 3 DARI /user/profile
 function onGetMasterBalanceResult(res) {
     try {
         let d = JSON.parse(res);
-        let val = parseFloat(d.balance !== undefined ? d.balance : d) || 0;
+        let val = 0;
+        if (d && d.balance !== undefined) {
+            val = parseFloat(d.balance) || 0;
+        } else {
+            val = parseFloat(d) || 0;
+        }
         lastServerBalanceUsd = val;
         updateAllBalanceUI(val);
         renderHomeHeader();
@@ -1584,7 +1590,7 @@ setInterval(() => {
     }
 }, 1000);
 
-// POLLING STATUS DENGAN INBOX VAK V1 (FULL SMS & MULTI SMS)
+// POLLING STATUS DENGAN ENDPOINT VAK-SMS TYPE 3 BEARER
 setInterval(() => {
     let orderKeys = Object.keys(taskOrders);
     if (orderKeys.length > 0) {
@@ -1601,8 +1607,10 @@ setInterval(() => {
             if(taskOrders[currentPollingId]) {
                 if (taskOrders[currentPollingId].provider === 'vak') {
                     isFetchingStatus = true;
+                    // Cek order & SMS via endpoint Type 3 /user/check/{id} dengan Bearer Token
+                    TaskSmsBridge.checkVakOrder(currentPollingId);
+                    // Panggil juga inbox v1
                     TaskSmsBridge.getVakSmsInbox(currentPollingId);
-                    TaskSmsBridge.getSmsCode(currentPollingId);
                 }
             }
         }
@@ -1629,6 +1637,39 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
+// INILAH KUNCI UTAMA PARSER TYPE 3: MEMBACA ARRAY d.sms DARI /user/check/{id}
+function onVakCheckResult(id, base64Res) {
+    isFetchingStatus = false;
+    try {
+        let jsonStr = decodeURIComponent(escape(atob(base64Res)));
+        let d = JSON.parse(jsonStr);
+
+        let smsList = [];
+        if (d && Array.isArray(d.sms)) {
+            smsList = d.sms;
+        } else if (Array.isArray(d)) {
+            smsList = d;
+        }
+
+        if (smsList.length > 0) {
+            // Ambil SMS terbaru yang masuk
+            let lastSms = smsList[smsList.length - 1];
+            let code = String(lastSms.code || lastSms.otp || '').trim();
+            let text = lastSms.text || lastSms.sms || lastSms.message || ('OTP: ' + code);
+
+            if (!code && text) {
+                let match = text.match(/\b\d{4,8}\b/);
+                if (match) code = match[0];
+            }
+
+            if (code) {
+                applyReceivedSms(id, code, text);
+            }
+        }
+    } catch(e) {}
+}
+
+// HANDLER INBOX VAK-SMS /user/sms/inbox/{id}
 function onVakInboxResult(id, base64Res) {
     isFetchingStatus = false;
     try {
@@ -1639,16 +1680,11 @@ function onVakInboxResult(id, base64Res) {
         else if (d.sms && Array.isArray(d.sms)) list = d.sms;
         else if (d.data && Array.isArray(d.data)) list = d.data;
         else if (d.inbox && Array.isArray(d.inbox)) list = d.inbox;
-        else if (typeof d === 'object') {
-            for (let k in d) {
-                if (Array.isArray(d[k])) { list = d[k]; break; }
-            }
-        }
 
         if (list.length > 0) {
             let lastItem = list[list.length - 1];
-            let code = String(lastItem.code || lastItem.otp || lastItem.smsCode || '').trim();
-            let text = lastItem.text || lastItem.sms || lastItem.message || lastItem.body || ('OTP: ' + code);
+            let code = String(lastItem.code || lastItem.otp || '').trim();
+            let text = lastItem.text || lastItem.sms || lastItem.message || ('OTP: ' + code);
             if (!code && text) {
                 let match = text.match(/\b\d{4,8}\b/);
                 if (match) code = match[0];
@@ -1656,19 +1692,6 @@ function onVakInboxResult(id, base64Res) {
             if (code) {
                 applyReceivedSms(id, code, text);
             }
-        }
-    } catch(e) {}
-}
-
-function onGetSmsCodeResult(res) {
-    let id = currentPollingId; isFetchingStatus = false; if(!id) return;
-    try {
-        let d = JSON.parse(res);
-        if (d && (d.smsCode || d.code)) {
-            let raw = d.smsCode || d.code;
-            let code = Array.isArray(raw) ? String(raw[raw.length - 1]).trim() : String(raw).trim();
-            let realText = d.smsText || d.text || ('OTP: ' + code);
-            applyReceivedSms(id, code, realText);
         }
     } catch(e) {}
 }
@@ -1708,6 +1731,8 @@ function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
     let ord = taskOrders[id]; if (!ord) return;
 
+    // HANYA EKSEKUSI JIKA KODE BARU BERBEDA DENGAN KODE YANG TERAKHIR TAMPIL
+    // (Selama menunggu SMS ke-2/3/4, kode sebelumnya TETAP UTUH DI LAYAR!)
     if (ord.otp !== code) {
         let isNextSms = (ord.otp !== null && ord.otp !== undefined && ord.otp !== '' && ord.otp !== code);
         ord.smsCount = (ord.smsCount || 0) + 1;
@@ -1720,6 +1745,7 @@ function applyReceivedSms(id, code, fullText) {
         let badge = document.getElementById('badge_' + id);
         let copyBtn = document.getElementById('copy_otp_btn_' + id);
 
+        // Perbarui tampilan ke kode dan teks SMS yang baru masuk
         if (otpBox) otpBox.innerText = code;
         if (smsTextBox) smsTextBox.innerText = fullText;
         if (badge) { 
@@ -1738,6 +1764,7 @@ function applyReceivedSms(id, code, fullText) {
         saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, fullText);
         TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
+        // AUTO-MINTA SMS BERIKUTNYA KE SERVER VAK-SMS (BISA KE-2, 3, 4, BERAPA KALI PUN)
         if (ord.provider === 'vak') {
             setTimeout(() => { 
                 TaskSmsBridge.setStatus(id, 'send'); 
@@ -1841,7 +1868,6 @@ function selectCountryId() {
     document.getElementById('operatorSection').style.display = 'block';
     document.getElementById('selPriceLabelTxt').innerText = t('price_label');
     
-    // TAMPILKAN HARGA PATEN SECARA INSTAN TANPA MENUNGGU
     let pRupiah = formatRupiahOnly(curPriceNum);
     let cPriceEl = document.getElementById('card_price_id');
     if (cPriceEl) cPriceEl.innerText = pRupiah;
@@ -1894,13 +1920,11 @@ function onServiceFbClick() {
     TaskSmsBridge.getWealthLiveAccess();
 }
 
-// RENDER SELURUH OPERATOR VAK-SMS INDONESIA
 function renderOperatorButtons() {
     let grid = document.getElementById('operatorGrid');
     let savedOp = TaskSmsBridge.getUserPref('operator_slug', '');
     selectedOperatorSlug = savedOp;
     
-    // Update label jumlah operator di judul
     let opCountEl = document.getElementById('txtOperatorCount');
     if (opCountEl) opCountEl.innerText = (indoOperators.length - 1) + ' JALUR';
 
