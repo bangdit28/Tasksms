@@ -2260,3 +2260,4 @@ function uiLoginSuccess(username, isAdmin) {
 function confirmLogout() { 
     let msg = (currentAppLang === 'en') ? 'Are you sure you want to sign out?' : 'Yakin ingin keluar?';
     if(confirm(msg)) TaskSmsBridge.doLogout();
+}
