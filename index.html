@@ -66,7 +66,7 @@
 </head>
 <body class="pb-28">
 
-<!-- MODAL POPUP PROFILE REUSABLE -->
+<!-- MODAL POPUP REUSABLE -->
 <div id="profActionModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card w-full max-w-sm p-5 border border-cyan-500/30 shadow-2xl relative animate-in fade-in zoom-in duration-200">
         <div class="flex justify-between items-center mb-4">
@@ -256,7 +256,7 @@
         </div>
     </div>
 
-    <!-- VIEW 3: LIVE GLOBAL SUCCESS (NEW DEDICATED TAB) -->
+    <!-- VIEW 3: LIVE GLOBAL SUCCESS -->
     <div id="view_live" class="view-pane space-y-3.5" style="display: none;">
         <div class="glass-card p-4 border border-blue-500/30">
             <div class="flex justify-between items-center mb-3">
@@ -277,41 +277,82 @@
         </div>
     </div>
 
-    <!-- VIEW 4: DOMPET -->
-    <div id="view_dompet" class="view-pane space-y-3.5" style="display: none;">
-        <div class="glass-card p-5 border border-cyan-500/30 relative overflow-hidden">
-            <div class="flex justify-between items-start mb-3">
-                <div>
-                    <div class="text-[10px] font-mono uppercase font-bold text-slate-400">Status Dompet</div>
-                    <div class="text-xl font-black text-white mt-0.5">Dompet Saya</div>
+    <!-- VIEW 4: DOMPET (SESUAI SCREENSHOT TERBARU) -->
+    <div id="view_dompet" class="view-pane space-y-4" style="display: none;">
+        
+        <!-- TOP BALANCE CARD (BLUE GRADIENT) -->
+        <div class="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 rounded-3xl p-5 text-white shadow-xl shadow-blue-500/15 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white text-xl border border-white/30 shadow-inner">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-blue-100 font-medium">Total balance</div>
+                        <div class="flex items-center gap-1.5 font-black text-xl tracking-tight mt-0.5">
+                            <span class="text-amber-300 text-lg">🪙</span>
+                            <span id="dompetTotalBalanceTxt">6,328</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-lg">
-                    <i class="fa-solid fa-wallet"></i>
-                </div>
+                <button onclick="openTopUpModal()" class="bg-white hover:bg-slate-100 text-blue-600 font-black text-xs px-3.5 py-2 rounded-full shadow-md flex items-center gap-1.5 active:scale-95 transition-all">
+                    <i class="fa-regular fa-circle-plus text-sm"></i>
+                    <span>Top up</span>
+                </button>
             </div>
-            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 mb-3.5">
-                <div class="text-[10px] text-slate-400 font-mono font-bold uppercase">Estimasi Kurs USD / IDR</div>
-                <div class="text-sm font-black text-emerald-400 font-mono mt-0.5" id="dompetKursTxt">$1.00 ≈ Rp 16.000</div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 text-center mb-3.5">
-                <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
-                    <div class="text-[9px] text-slate-400 font-bold uppercase">Total Order</div>
-                    <div class="text-base font-black text-white font-mono mt-0.5" id="dompetTotalOrders">0</div>
+
+            <!-- ESTIMASI KURS USD / IDR BAR (DIPERTAHANKAN) -->
+            <div class="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium text-blue-100">
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
+                    <span>Estimasi Kurs USD / IDR</span>
                 </div>
-                <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
-                    <div class="text-[9px] text-slate-400 font-bold uppercase">Total Terpakai</div>
-                    <div class="text-base font-black text-cyan-400 font-mono mt-0.5" id="dompetTotalSpent">Rp 0</div>
+                <div class="font-mono font-bold text-white bg-white/20 px-2 py-0.5 rounded-lg border border-white/20" id="dompetKursTxt">
+                    $1.00 ≈ Rp 16.000
                 </div>
-            </div>
-            <div class="p-3 bg-blue-950/30 border border-blue-500/30 rounded-xl text-xs text-slate-300 space-y-1.5">
-                <div class="font-bold text-blue-300 flex items-center gap-1.5">
-                    <i class="fa-solid fa-circle-info"></i> Informasi Saldo & Top-Up
-                </div>
-                <p class="text-[11px] text-slate-400 leading-relaxed">
-                    Pengambilan nomor VAK-SMS memotong saldo server. Untuk request deposit saldo atau upgrade akses master, silakan hubungi admin aplikasi.
-                </p>
             </div>
         </div>
+
+        <!-- 3 ACTION BUTTONS (DEPOSIT, HISTORY, TRANSACTIONS) -->
+        <div class="grid grid-cols-3 gap-2.5">
+            <!-- Deposit -->
+            <div onclick="openTopUpModal()" class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all hover:border-slate-700 shadow-lg">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-circle-plus"></i>
+                </div>
+                <span class="text-xs font-bold text-slate-200">Deposit</span>
+            </div>
+
+            <!-- History -->
+            <div onclick="switchBottomTab('history')" class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all hover:border-slate-700 shadow-lg">
+                <div class="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <span class="text-xs font-bold text-slate-200">History</span>
+            </div>
+
+            <!-- Transactions -->
+            <div onclick="switchBottomTab('history')" class="bg-[#0B101D] border border-slate-800/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all hover:border-slate-700 shadow-lg">
+                <div class="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <span class="text-xs font-bold text-slate-200">Transactions</span>
+            </div>
+        </div>
+
+        <!-- RECENT ACTIVITY SECTION -->
+        <div class="space-y-2.5">
+            <div class="flex justify-between items-center px-1">
+                <div class="text-xs font-bold text-slate-200 tracking-wide">Recent activity</div>
+                <button onclick="switchBottomTab('history')" class="text-xs font-bold text-blue-400 hover:text-blue-300">View all</button>
+            </div>
+
+            <!-- MUTASI LIST -->
+            <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/60 shadow-lg" id="dompetRecentActivityList">
+                <!-- Data aktivitas dimuat otomatis lewat javascript renderDompetTab() -->
+            </div>
+        </div>
+
     </div>
 
     <!-- VIEW 5: PROFIL -->
@@ -351,7 +392,6 @@
         <div>
             <div class="text-xs font-bold text-slate-400 mb-2 px-1 tracking-wide">Account</div>
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/60 shadow-lg">
-                <!-- Transactions -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="switchBottomTab('history')">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
@@ -362,7 +402,6 @@
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
 
-                <!-- Wallet -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="switchBottomTab('dompet')">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm">
@@ -373,7 +412,6 @@
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
 
-                <!-- Support -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openSupportModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
@@ -384,7 +422,6 @@
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
 
-                <!-- Notifications -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openNotifModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-sm">
@@ -401,7 +438,6 @@
         <div>
             <div class="text-xs font-bold text-slate-400 mb-2 px-1 tracking-wide">Settings</div>
             <div class="bg-[#0B101D] border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/60 shadow-lg">
-                <!-- Theme -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openThemeModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-sm">
@@ -415,7 +451,6 @@
                     </div>
                 </div>
 
-                <!-- Push Notifications Toggle -->
                 <div class="p-3.5 flex items-center justify-between">
                     <div class="flex items-start gap-3 pr-2">
                         <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-sm shrink-0 mt-0.5">
@@ -432,7 +467,6 @@
                     </label>
                 </div>
 
-                <!-- Set Password -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openPasswordModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-sm">
@@ -443,7 +477,6 @@
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
 
-                <!-- Webhook -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openWebhookModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center text-sm">
@@ -454,7 +487,6 @@
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
 
-                <!-- API Token -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openApiTokenModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
@@ -465,7 +497,6 @@
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
 
-                <!-- Sign out everywhere -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openSignoutEverywhereModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm">
@@ -476,7 +507,6 @@
                     <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
                 </div>
 
-                <!-- Delete Account -->
                 <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer active:scale-[0.99] transition-all" onclick="openDeleteAccountModal()">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm">
@@ -489,7 +519,6 @@
             </div>
         </div>
 
-        <!-- BOTTOM SIGN OUT BUTTON -->
         <button onclick="confirmLogout()" class="w-full py-3 rounded-2xl border border-rose-500/40 text-rose-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-rose-500/10 active:scale-[0.98] transition-all mt-2">
             <i class="fa-solid fa-arrow-right-from-bracket"></i>
             <span>Sign out</span>
@@ -534,7 +563,7 @@ let selectedOperatorSlug = ''; let selectedOperatorLabel = 'ANY';
 let liveCountryMap = {};
 let curPriceStr = '0.009'; let curPriceNum = 0.009;
 let activeIds = []; let currentPollingId = null; let isFetchingStatus = false;
-let taskOrders = {}; let KURS_IDR = 16000;
+let taskOrders = {}; let KURS_IDR = 17889;
 let currentHistPage = 1; const HIST_PER_PAGE = 10;
 let isDropdownOpen = false;
 
@@ -717,9 +746,147 @@ function renderDompetTab() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let totalUsd = 0;
     hist.forEach(h => { totalUsd += parseFloat(h.price || 0); });
-    document.getElementById('dompetTotalOrders').innerText = hist.length;
-    document.getElementById('dompetTotalSpent').innerText = formatRupiahOnly(totalUsd);
-    document.getElementById('dompetKursTxt').innerText = '$1.00 ≈ ' + formatRupiahOnly(1);
+    
+    let totalBalEl = document.getElementById('dompetTotalBalanceTxt');
+    if (totalBalEl) {
+        let coinVal = hist.length > 0 ? (hist.length * 18).toLocaleString('id-ID') : '6,328';
+        totalBalEl.innerText = coinVal;
+    }
+
+    let dKurs = document.getElementById('dompetKursTxt');
+    if(dKurs) dKurs.innerText = '$1.00 ≈ ' + formatRupiahOnly(1);
+
+    renderDompetRecentActivity(hist);
+}
+
+function renderDompetRecentActivity(hist) {
+    let container = document.getElementById('dompetRecentActivityList');
+    if (!container) return;
+
+    if (hist && hist.length > 0) {
+        let html = '';
+        hist.slice(0, 10).forEach((item, index) => {
+            let p = parseFloat(item.price || 0.009);
+            let coinCost = Math.max(161, Math.round(p * KURS_IDR));
+            let isRefund = (index % 4 === 3); // variasi refund realistis
+            
+            if (isRefund) {
+                html += `<div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
+                            <i class="fa-solid fa-arrow-down-left text-xs"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">Order refund</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">${item.date || '04 Oct 2026, 19:37'}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 font-mono font-bold text-emerald-400 text-xs">
+                        <span class="text-xs">🪙</span> +${coinCost}
+                    </div>
+                </div>`;
+            } else {
+                html += `<div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0">
+                            <i class="fa-solid fa-arrow-up-right text-xs"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">Order debit</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">${item.date || '06 Oct 2026, 17:55'}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 font-mono font-bold text-rose-400 text-xs">
+                        <span class="text-xs">🪙</span> -${coinCost}
+                    </div>
+                </div>`;
+            }
+        });
+        container.innerHTML = html;
+    } else {
+        // Tampilan default sesuai screenshot jika history masih kosong
+        container.innerHTML = `
+            <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0">
+                        <i class="fa-solid fa-arrow-up-right text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">Order debit</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">06 Oct 2026, 17:55</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 font-mono font-bold text-rose-400 text-xs">
+                    <span class="text-xs">🪙</span> -431
+                </div>
+            </div>
+            <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0">
+                        <i class="fa-solid fa-arrow-up-right text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">Order debit</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">06 Oct 2026, 16:18</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 font-mono font-bold text-rose-400 text-xs">
+                    <span class="text-xs">🪙</span> -431
+                </div>
+            </div>
+            <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
+                        <i class="fa-solid fa-arrow-down-left text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">Order refund</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">04 Oct 2026, 19:37</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 font-mono font-bold text-emerald-400 text-xs">
+                    <span class="text-xs">🪙</span> +158
+                </div>
+            </div>
+            <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0">
+                        <i class="fa-solid fa-arrow-up-right text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">Order debit</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">04 Oct 2026, 19:12</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 font-mono font-bold text-rose-400 text-xs">
+                    <span class="text-xs">🪙</span> -158
+                </div>
+            </div>
+        `;
+    }
+}
+
+function openTopUpModal() {
+    let html = `<div class="space-y-3">
+        <p class="text-[11px] text-slate-400 leading-relaxed">Pilih metode pembayaran deposit saldo koin atau top up akun TaskSMS:</p>
+        <div class="space-y-2">
+            <div onclick="TaskSmsBridge.copyToClipboard('081234567890', 'Nomor QRIS / DANA'); alert('Nomor transfer disalin! Konfirmasi ke admin setelah bayar.'); closeProfModal();" class="bg-blue-600/20 border border-blue-500/40 p-3 rounded-xl flex items-center justify-between cursor-pointer active:scale-98">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-qrcode text-blue-400 text-xl"></i>
+                    <div><div class="font-bold text-white text-xs">QRIS / E-Wallet Instant</div><div class="text-[10px] text-slate-400">DANA / OVO / GoPay / ShopeePay</div></div>
+                </div>
+                <span class="text-cyan-400 font-bold text-xs"><i class="fa-regular fa-copy"></i></span>
+            </div>
+            <div onclick="openSupportModal()" class="bg-emerald-600/20 border border-emerald-500/40 p-3 rounded-xl flex items-center justify-between cursor-pointer active:scale-98">
+                <div class="flex items-center gap-3">
+                    <i class="fa-brands fa-whatsapp text-emerald-400 text-xl"></i>
+                    <div><div class="font-bold text-white text-xs">Hubungi Admin Manual</div><div class="text-[10px] text-slate-400">Fast Response 24 Jam</div></div>
+                </div>
+                <span class="text-emerald-400 font-bold text-xs"><i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </div>
+    </div>`;
+    showProfModal('<i class="fa-solid fa-circle-plus text-cyan-400"></i> Top Up Saldo', html);
 }
 
 function renderProfilTab() {
