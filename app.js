@@ -313,7 +313,7 @@ const DIAL_MAP = {
     '998': { name: 'Uzbekistan', iso: 'uz' }
 };
 
-// DAFTAR OPERATOR VAK-SMS INDONESIA
+// DAFTAR OPERATOR RESMI INDONESIA
 const indoOperators = [
     { label: 'Any', slug: '', icon: 'fa-solid fa-chart-simple', type: 'any' },
     { label: 'Telkomsel', slug: 'telkomsel', file: 'telkomsel.png', type: 'logo', initial: 'T', col: 'bg-red-600' },
@@ -685,7 +685,6 @@ function updateAllBalanceUI(val) {
     }
 }
 
-// PARSE RESPONSE TYPE 3 DARI /user/profile
 function onGetMasterBalanceResult(res) {
     try {
         let d = JSON.parse(res);
@@ -1590,7 +1589,7 @@ setInterval(() => {
     }
 }, 1000);
 
-// POLLING STATUS DENGAN ENDPOINT VAK-SMS TYPE 3 BEARER
+// POLLING STATUS DENGAN ENDPOINT TYPE 3 BEARER
 setInterval(() => {
     let orderKeys = Object.keys(taskOrders);
     if (orderKeys.length > 0) {
@@ -1607,9 +1606,7 @@ setInterval(() => {
             if(taskOrders[currentPollingId]) {
                 if (taskOrders[currentPollingId].provider === 'vak') {
                     isFetchingStatus = true;
-                    // Cek order & SMS via endpoint Type 3 /user/check/{id} dengan Bearer Token
                     TaskSmsBridge.checkVakOrder(currentPollingId);
-                    // Panggil juga inbox v1
                     TaskSmsBridge.getVakSmsInbox(currentPollingId);
                 }
             }
@@ -1637,7 +1634,7 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
-// INILAH KUNCI UTAMA PARSER TYPE 3: MEMBACA ARRAY d.sms DARI /user/check/{id}
+// PARSER TYPE 3: MEMBACA ARRAY d.sms DARI /user/check/{id}
 function onVakCheckResult(id, base64Res) {
     isFetchingStatus = false;
     try {
@@ -1652,7 +1649,6 @@ function onVakCheckResult(id, base64Res) {
         }
 
         if (smsList.length > 0) {
-            // Ambil SMS terbaru yang masuk
             let lastSms = smsList[smsList.length - 1];
             let code = String(lastSms.code || lastSms.otp || '').trim();
             let text = lastSms.text || lastSms.sms || lastSms.message || ('OTP: ' + code);
@@ -1669,7 +1665,7 @@ function onVakCheckResult(id, base64Res) {
     } catch(e) {}
 }
 
-// HANDLER INBOX VAK-SMS /user/sms/inbox/{id}
+// HANDLER INBOX /user/sms/inbox/{id}
 function onVakInboxResult(id, base64Res) {
     isFetchingStatus = false;
     try {
@@ -1726,13 +1722,11 @@ function onWealthSuccessOtpResult(res) {
     } catch(e) {}
 }
 
-// LOGIKA UTAMA: MULTI SMS (SMS KE-1, 2, 3, 4, DST) DENGAN MENJAGA KODE SEBELUMNYA TETAP MUNCUL
+// LOGIKA UTAMA: MULTI SMS DENGAN MENJAGA KODE SEBELUMNYA TETAP MUNCUL
 function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
     let ord = taskOrders[id]; if (!ord) return;
 
-    // HANYA EKSEKUSI JIKA KODE BARU BERBEDA DENGAN KODE YANG TERAKHIR TAMPIL
-    // (Selama menunggu SMS ke-2/3/4, kode sebelumnya TETAP UTUH DI LAYAR!)
     if (ord.otp !== code) {
         let isNextSms = (ord.otp !== null && ord.otp !== undefined && ord.otp !== '' && ord.otp !== code);
         ord.smsCount = (ord.smsCount || 0) + 1;
@@ -1745,7 +1739,6 @@ function applyReceivedSms(id, code, fullText) {
         let badge = document.getElementById('badge_' + id);
         let copyBtn = document.getElementById('copy_otp_btn_' + id);
 
-        // Perbarui tampilan ke kode dan teks SMS yang baru masuk
         if (otpBox) otpBox.innerText = code;
         if (smsTextBox) smsTextBox.innerText = fullText;
         if (badge) { 
@@ -1764,7 +1757,6 @@ function applyReceivedSms(id, code, fullText) {
         saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, fullText);
         TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
-        // AUTO-MINTA SMS BERIKUTNYA KE SERVER VAK-SMS (BISA KE-2, 3, 4, BERAPA KALI PUN)
         if (ord.provider === 'vak') {
             setTimeout(() => { 
                 TaskSmsBridge.setStatus(id, 'send'); 
@@ -1859,7 +1851,8 @@ function selectCountryId() {
 
     document.getElementById('selDropdownFlag').innerHTML = getFlagImgHtml('id', 'Indonesia', 20);
     document.getElementById('selDropdownTitle').innerHTML = 'Indonesia <span class="text-[10px] text-slate-400 font-mono">(+62)</span>';
-    document.getElementById('selDropdownSub').innerText = 'VAK-SMS • Fast Active';
+    // NAMA SERVER DISAMARKAN SECARA PROFESIONAL
+    document.getElementById('selDropdownSub').innerText = 'Server Premium • Fast Active';
     document.getElementById('selDropdownBadge').innerText = 'Ready';
     document.getElementById('selDropdownBadge').className = 'text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded';
 
@@ -1891,7 +1884,8 @@ function selectLiveCountry(code) {
 
     document.getElementById('selDropdownFlag').innerHTML = getFlagImgHtml(item.iso, item.name, 20);
     document.getElementById('selDropdownTitle').innerHTML = `${item.name} <span class="text-[10px] text-slate-400 font-mono">(+${code})</span>`;
-    document.getElementById('selDropdownSub').innerText = 'StexSMS Pool Active';
+    // DISAMARKAN MENJADI SERVER GLOBAL
+    document.getElementById('selDropdownSub').innerText = 'Server Global • Cloud Pool';
     document.getElementById('selDropdownBadge').innerText = 'Free';
     document.getElementById('selDropdownBadge').className = 'text-[9px] font-mono font-bold text-cyan-400 bg-cyan-950/80 border border-cyan-500/30 px-2 py-0.5 rounded';
 
@@ -2102,12 +2096,13 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
     let isVak = (prov === 'vak');
     let banBtnHtml = isVak ? `<button id="ban_btn_${id}" onclick="banOrder('${id}')" class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold py-2 rounded-xl active:scale-95 transition-all"><i class="fa-solid fa-ban mr-1"></i> Ban (Bekas)</button>` : '';
 
+    // BADGE VAK DIGANTI MENJADI 'VIP' SUPAYA MEMBER TIDAK TAHU NAMA SERVER ASLI
     let html = `<div id="order_${id}" class="bg-[#0A101D] p-4 rounded-2xl mb-4 border border-slate-800 shadow-2xl relative">
         <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-2">
                 <span class="text-base font-black text-cyan-400 font-mono tracking-wider">#${id}</span>
                 <span id="badge_${id}" class="${badgeClass}">${badgeText}</span>
-                <span class="text-[8px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">${isVak ? 'VAK' : 'FREE'}</span>
+                <span class="text-[8px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">${isVak ? 'VIP' : 'FREE'}</span>
             </div>
             <div class="flex items-center gap-2">
                 <span id="timer_${id}" class="text-[11px] font-mono text-slate-500"></span>
