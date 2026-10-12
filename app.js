@@ -2291,8 +2291,12 @@ function onSetStatusResult(res) {}
 
 function finishOrder(id) {
     let ord = taskOrders[id];
-    if (ord && ord.provider === 'vak') { TaskSmsBridge.cancelNumberVak(id); }
     
+    // Kirim status 'end' ke VAK agar order ditutup sebagai selesai (bukan di-cancel)
+    if (ord && ord.provider === 'vak') { 
+        TaskSmsBridge.setStatus(id, 'end'); 
+    }
+
     pushNewNotification('Facebook — Completed', 'Order #' + id + ' (' + (ord ? ord.ctry : 'Indonesia') + ')', id);
 
     delete taskOrders[id];
