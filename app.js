@@ -1588,7 +1588,7 @@ setInterval(() => {
 }, 1000);
 
 // -------------------------------------------------------------
-// POLLING FAIL-SAFE & PENARIKAN SMS INBOX LENGKAP (ANTI-FLICKER)
+// POLLING FAIL-SAFE & PENARIKAN SMS INBOX LENGKAP (FIXED)
 // -------------------------------------------------------------
 setInterval(() => {
     let orderKeys = Object.keys(taskOrders);
@@ -1610,13 +1610,9 @@ setInterval(() => {
 
             let curOrd = taskOrders[currentPollingId];
             if (curOrd && curOrd.provider === 'vak') {
-                // 1. Fallback cepat HANYA jika SMS pertama belum pernah didapat sama sekali
-                if (!curOrd.otp) {
-                    TaskSmsBridge.getSmsCode(currentPollingId);
-                }
-                // 2. Ambil Full Text Inbox dari /user/sms/inbox/{id} (sumber utama & akurat)
+                // DIPANGGIL TANPA KUNCI !curOrd.otp AGAR SMS KE-2, 3, 4 TETAP TERDEKTEKSI SELAMANYA
+                TaskSmsBridge.getSmsCode(currentPollingId);
                 TaskSmsBridge.getVakSmsInbox(currentPollingId);
-                // 3. Cek Status Order Type 3
                 TaskSmsBridge.checkVakOrder(currentPollingId);
             }
         }
@@ -1644,30 +1640,32 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
-// HANDLER VAK-SMS CLASSIC
+// HANDLER VAK-SMS CLASSIC (DUKUNGAN PARSER KOMA MULTI-OTP)
 function onGetSmsCodeResult(res) {
     let id = currentPollingId; if (!id) return;
     try {
         let d = JSON.parse(res);
         if (d && (d.smsCode !== undefined && d.smsCode !== null)) {
             let raw = d.smsCode;
-            let code = '';
-            
-            if (Array.isArray(raw) && raw.length > 0) {
-                code = String(raw[raw.length - 1]).trim();
+            let codeList = [];
+
+            if (Array.isArray(raw)) {
+                codeList = raw.map(c => String(c).trim());
             } else if (typeof raw === 'string' || typeof raw === 'number') {
-                code = String(raw).trim();
+                codeList = String(raw).split(',').map(c => c.trim()).filter(c => c !== '');
             }
 
-            if (code && code !== 'null' && code !== '----') {
-                let realText = d.smsText || d.text || '';
-                applyReceivedSms(id, code, realText);
-            }
+            codeList.forEach(singleCode => {
+                if (singleCode && singleCode !== 'null' && singleCode !== '----') {
+                    let realText = d.smsText || d.text || (singleCode + ' adalah kode konfirmasi akun Anda');
+                    applyReceivedSms(id, singleCode, realText);
+                }
+            });
         }
     } catch(e) {}
 }
 
-// HANDLER INBOX VAK-SMS /user/sms/inbox/{id} (SUMBER UTAMA FULL TEXT SMS)
+// HANDLER INBOX VAK-SMS (MENGITERASI SELURUH ARRAY INBOX)
 function onVakInboxResult(id, base64Res) {
     if (!id || !base64Res) return;
     try {
@@ -1689,10 +1687,9 @@ function onVakInboxResult(id, base64Res) {
             }
         }
 
-        if (list.length > 0) {
-            let lastItem = list[list.length - 1];
-            let code = String(lastItem.code || lastItem.otp || lastItem.smsCode || '').trim();
-            let fullText = lastItem.text || lastItem.sms || lastItem.message || lastItem.body || '';
+        list.forEach(item => {
+            let code = String(item.code || item.otp || item.smsCode || '').trim();
+            let fullText = item.text || item.sms || item.message || item.body || '';
 
             if (!code && fullText) {
                 let match = fullText.match(/\b\d{4,8}\b/);
@@ -1702,7 +1699,7 @@ function onVakInboxResult(id, base64Res) {
             if (code || fullText) {
                 applyFullInboxMessage(id, code, fullText);
             }
-        }
+        });
     } catch(e) {}
 }
 
@@ -1721,18 +1718,19 @@ function onVakCheckResult(id, base64Res) {
         }
 
         if (smsList.length > 0) {
-            let lastSms = smsList[smsList.length - 1];
-            let code = String(lastSms.code || lastSms.otp || '').trim();
-            let text = lastSms.text || lastSms.sms || lastSms.message || '';
+            smsList.forEach(lastSms => {
+                let code = String(lastSms.code || lastSms.otp || '').trim();
+                let text = lastSms.text || lastSms.sms || lastSms.message || '';
 
-            if (!code && text) {
-                let match = text.match(/\b\d{4,8}\b/);
-                if (match) code = match[0];
-            }
+                if (!code && text) {
+                    let match = text.match(/\b\d{4,8}\b/);
+                    if (match) code = match[0];
+                }
 
-            if (code || text) {
-                applyFullInboxMessage(id, code, text);
-            }
+                if (code || text) {
+                    applyFullInboxMessage(id, code, text);
+                }
+            });
         }
     } catch(e) {}
 }
@@ -1816,7 +1814,6 @@ function applyReceivedSms(id, code, fullText) {
     // CEGAH BUG BOLAK-BALIK:
     // Jika kode ini SUDAH PERNAH diterima sebelumnya:
     if (ord.receivedOtps.includes(code)) {
-        // Cek jika teks lengkapnya baru masuk dan perlu diperbarui
         if (fullText && fullText.trim() !== '' && ord.smsText !== fullText && !fullText.startsWith('OTP:')) {
             ord.smsText = fullText;
             persistOrders();
