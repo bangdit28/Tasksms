@@ -1640,11 +1640,22 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
-// HANDLER VAK-SMS CLASSIC (DUKUNGAN PARSER KOMA MULTI-OTP)
-function onGetSmsCodeResult(res) {
-    let id = currentPollingId; if (!id) return;
+// HANDLER VAK-SMS CLASSIC (PRESISI PER ORDER ID)
+function onGetSmsCodeResult(idNum, res) {
+    // Jika Java mengirim 2 parameter (idNum & res)
+    let id = idNum || currentPollingId; 
+    let responseText = res;
+
+    // Handil kompatibilitas jika hanya 1 parameter
+    if (!res && typeof idNum === 'string' && idNum.startsWith('{')) {
+        responseText = idNum;
+        id = currentPollingId;
+    }
+
+    if (!id || !taskOrders[id]) return;
+
     try {
-        let d = JSON.parse(res);
+        let d = JSON.parse(responseText);
         if (d && (d.smsCode !== undefined && d.smsCode !== null)) {
             let raw = d.smsCode;
             let codeList = [];
@@ -1664,6 +1675,7 @@ function onGetSmsCodeResult(res) {
         }
     } catch(e) {}
 }
+
 
 // HANDLER INBOX VAK-SMS (MENGITERASI SELURUH ARRAY INBOX)
 function onVakInboxResult(id, base64Res) {
