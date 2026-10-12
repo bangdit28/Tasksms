@@ -1588,7 +1588,7 @@ setInterval(() => {
 }, 1000);
 
 // -------------------------------------------------------------
-// POLLING FAIL-SAFE & PENARIKAN SMS INBOX LENGKAP (FIXED)
+// POLLING FAIL-SAFE & PENARIKAN SMS INBOX LENGKAP
 // -------------------------------------------------------------
 setInterval(() => {
     let orderKeys = Object.keys(taskOrders);
@@ -1610,7 +1610,7 @@ setInterval(() => {
 
             let curOrd = taskOrders[currentPollingId];
             if (curOrd && curOrd.provider === 'vak') {
-                // DIPANGGIL TANPA KUNCI !curOrd.otp AGAR SMS KE-2, 3, 4 TETAP TERDEKTEKSI SELAMANYA
+                // DIPANGGIL SELALU AGAR SMS KE-2, 3, 4 TETAP DIPANTAU
                 TaskSmsBridge.getSmsCode(currentPollingId);
                 TaskSmsBridge.getVakSmsInbox(currentPollingId);
                 TaskSmsBridge.checkVakOrder(currentPollingId);
@@ -1642,11 +1642,9 @@ function onWorkerDataResult(res) {
 
 // HANDLER VAK-SMS CLASSIC (PRESISI PER ORDER ID)
 function onGetSmsCodeResult(idNum, res) {
-    // Jika Java mengirim 2 parameter (idNum & res)
     let id = idNum || currentPollingId; 
     let responseText = res;
 
-    // Handil kompatibilitas jika hanya 1 parameter
     if (!res && typeof idNum === 'string' && idNum.startsWith('{')) {
         responseText = idNum;
         id = currentPollingId;
@@ -1675,7 +1673,6 @@ function onGetSmsCodeResult(idNum, res) {
         }
     } catch(e) {}
 }
-
 
 // HANDLER INBOX VAK-SMS (MENGITERASI SELURUH ARRAY INBOX)
 function onVakInboxResult(id, base64Res) {
@@ -1778,7 +1775,7 @@ function onWealthSuccessOtpResult(res) {
 }
 
 // -------------------------------------------------------------
-// INJEKSI FULL TEXT INBOX (MENGGANTIKAN TEKS LAMA SECARA REAL-TIME)
+// INJEKSI FULL TEXT INBOX (LOCKED TO LATEST)
 // -------------------------------------------------------------
 function applyFullInboxMessage(id, code, fullText) {
     let ord = taskOrders[id]; if (!ord) return;
@@ -1788,31 +1785,30 @@ function applyFullInboxMessage(id, code, fullText) {
         if (ord.otp) ord.receivedOtps.push(ord.otp);
     }
 
-    // Jika ini kode baru dan belum pernah dicatat:
-    if (code && !ord.receivedOtps.includes(code)) {
-        applyReceivedSms(id, code, fullText);
-        return;
-    }
+    if (code) {
+        let isAlreadyReceived = ord.receivedOtps.includes(code);
+        let latestCode = ord.receivedOtps.length > 0 ? ord.receivedOtps[ord.receivedOtps.length - 1] : null;
 
-    // Jika kode sudah sama/sudah pernah ada, tapi ada full text baru: update isi teksnya
-    if (fullText && fullText.trim() !== '' && ord.smsText !== fullText) {
+        if (isAlreadyReceived) {
+            if (code === latestCode && fullText && fullText.trim() !== '' && ord.smsText !== fullText) {
+                ord.smsText = fullText;
+                persistOrders();
+                let smsTextBox = document.getElementById('smsText_' + id);
+                if (smsTextBox) smsTextBox.innerText = fullText;
+            }
+        } else {
+            applyReceivedSms(id, code, fullText);
+        }
+    } else if (fullText && fullText.trim() !== '' && ord.smsText !== fullText) {
         ord.smsText = fullText;
         persistOrders();
-
         let smsTextBox = document.getElementById('smsText_' + id);
         if (smsTextBox) smsTextBox.innerText = fullText;
-
-        let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
-        let ex = hist.find(h => h.id === id || h.num === ord.num);
-        if (ex) {
-            ex.smsText = fullText;
-            TaskSmsBridge.saveHistory(JSON.stringify(hist));
-        }
     }
 }
 
 // -------------------------------------------------------------
-// LOGIKA UTAMA: TERIMA SMS, GANTI TAMPILAN, DAN AUTO "MORE SMS"
+// LOGIKA UTAMA: TERIMA SMS (DIKUNCI AGAR TIDAK BOLAK-BALIK)
 // -------------------------------------------------------------
 function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
@@ -1823,19 +1819,22 @@ function applyReceivedSms(id, code, fullText) {
         if (ord.otp) ord.receivedOtps.push(ord.otp);
     }
 
-    // CEGAH BUG BOLAK-BALIK:
-    // Jika kode ini SUDAH PERNAH diterima sebelumnya:
-    if (ord.receivedOtps.includes(code)) {
-        if (fullText && fullText.trim() !== '' && ord.smsText !== fullText && !fullText.startsWith('OTP:')) {
-            ord.smsText = fullText;
-            persistOrders();
-            let smsTextBox = document.getElementById('smsText_' + id);
-            if (smsTextBox) smsTextBox.innerText = fullText;
+    let isAlreadyReceived = ord.receivedOtps.includes(code);
+    let latestCode = ord.receivedOtps.length > 0 ? ord.receivedOtps[ord.receivedOtps.length - 1] : null;
+
+    if (isAlreadyReceived) {
+        if (code === latestCode) {
+            if (fullText && fullText.trim() !== '' && !fullText.startsWith('OTP:') && ord.smsText !== fullText) {
+                ord.smsText = fullText;
+                persistOrders();
+                let smsTextBox = document.getElementById('smsText_' + id);
+                if (smsTextBox) smsTextBox.innerText = fullText;
+            }
         }
         return; 
     }
 
-    // Ini kode yang BENAR-BENAR BARU
+    // TERIMA KODE BARU
     ord.receivedOtps.push(code);
     ord.smsCount = ord.receivedOtps.length;
     let isNextSms = ord.receivedOtps.length > 1;
@@ -1854,7 +1853,6 @@ function applyReceivedSms(id, code, fullText) {
     let badge = document.getElementById('badge_' + id);
     let copyBtn = document.getElementById('copy_otp_btn_' + id);
 
-    // Perbarui tampilan ke kode dan teks SMS yang baru masuk
     if (otpBox) otpBox.innerText = code;
     if (smsTextBox) smsTextBox.innerText = displayMsg;
     if (badge) { 
@@ -1873,7 +1871,6 @@ function applyReceivedSms(id, code, fullText) {
     saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, displayMsg);
     TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
-    // AUTO-MINTA SMS BERIKUTNYA KE SERVER VAK-SMS (UNTUK SMS KE-3, 4, 5, DST TANPA HENTI)
     if (ord.provider === 'vak') {
         setTimeout(() => { 
             TaskSmsBridge.setStatus(id, 'send'); 
@@ -2303,12 +2300,10 @@ function onSetStatusResult(res) {}
 
 function finishOrder(id) {
     let ord = taskOrders[id];
-    
-    // Kirim status 'end' ke VAK agar order ditutup sebagai selesai (bukan di-cancel)
     if (ord && ord.provider === 'vak') { 
         TaskSmsBridge.setStatus(id, 'end'); 
     }
-
+    
     pushNewNotification('Facebook — Completed', 'Order #' + id + ' (' + (ord ? ord.ctry : 'Indonesia') + ')', id);
 
     delete taskOrders[id];
