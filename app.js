@@ -223,14 +223,14 @@ function openLanguageModal() {
             <p class="text-[11px] text-slate-400 mb-2">Pilih bahasa antarmuka aplikasi / Select interface language:</p>
             <div onclick="setAppLanguage('id')" class="lang-option p-3 rounded-xl border ${isId ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
                 <div class="flex items-center gap-2.5">
-                    <img src="https://flagcdn.com/h20/id.png" height="18" style="height:18px; border-radius:3px;" alt="ID">
+                    <img src="https://flagcdn.com/w40/id.png" height="18" style="height:18px; border-radius:3px;" alt="ID">
                     <span class="font-bold text-white text-xs">Bahasa Indonesia</span>
                 </div>
                 ${isId ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
             </div>
             <div onclick="setAppLanguage('en')" class="lang-option p-3 rounded-xl border ${!isId ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/60'} flex items-center justify-between cursor-pointer active:scale-98">
                 <div class="flex items-center gap-2.5">
-                    <img src="https://flagcdn.com/h20/us.png" height="18" style="height:18px; border-radius:3px;" alt="EN">
+                    <img src="https://flagcdn.com/w40/us.png" height="18" style="height:18px; border-radius:3px;" alt="EN">
                     <span class="font-bold text-white text-xs">English (US)</span>
                 </div>
                 ${!isId ? '<i class="fa-solid fa-check text-cyan-400"></i>' : ''}
@@ -301,7 +301,7 @@ const DIAL_MAP = {
     '242': { name: 'Congo', iso: 'cg' },
     '243': { name: 'DR Congo', iso: 'cd' },
     '244': { name: 'Angola', iso: 'ao' },
-    '249': { name: 'Sudan', iso: 'sd' },          // <- FIX SUDAN
+    '249': { name: 'Sudan', iso: 'sd' },
     '250': { name: 'Rwanda', iso: 'rw' },
     '251': { name: 'Ethiopia', iso: 'et' },
     '252': { name: 'Somalia', iso: 'so' },
@@ -309,8 +309,8 @@ const DIAL_MAP = {
     '255': { name: 'Tanzania', iso: 'tz' },
     '256': { name: 'Uganda', iso: 'ug' },
     '257': { name: 'Burundi', iso: 'bi' },
-    '258': { name: 'Mozambique', iso: 'mz' },     // <- FIX MOZAMBIQUE
-    '260': { name: 'Zambia', iso: 'zm' },         // <- FIX ZAMBIA
+    '258': { name: 'Mozambique', iso: 'mz' },
+    '260': { name: 'Zambia', iso: 'zm' },
     '261': { name: 'Madagascar', iso: 'mg' },
     '263': { name: 'Zimbabwe', iso: 'zw' },
     '265': { name: 'Malawi', iso: 'mw' },
@@ -326,7 +326,7 @@ const DIAL_MAP = {
     '966': { name: 'Saudi Arabia', iso: 'sa' },
     '971': { name: 'UAE', iso: 'ae' },
     '977': { name: 'Nepal', iso: 'np' },
-    '992': { name: 'Tajikistan', iso: 'tj' },     // <- FIX TAJIKISTAN (+992)
+    '992': { name: 'Tajikistan', iso: 'tj' },
     '998': { name: 'Uzbekistan', iso: 'uz' }
 };
 
@@ -340,9 +340,9 @@ const indoOperators = [
     { label: 'Smartfren', slug: 'smartfren', file: 'smartfren.png', type: 'logo', initial: 'S', col: 'bg-rose-600' }
 ];
 
+// FUNGSI BENDERA DENGAN UKURAN SERAGAM, PROPORSIONAL & TIDAK GEPENG
 function getFlagImgHtml(isoCode, countryName, displayHeight = 18) {
     let iso = (isoCode || 'un').toLowerCase().trim();
-    // Rasio seragam: Lebar 26px x Tinggi 18px (Object-fit cover mencegah bendera gepeng/tidak sama)
     let w = Math.round(displayHeight * 1.4); 
     let h = displayHeight;
     return `<span style="width:${w}px; height:${h}px; border-radius:4px; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; vertical-align:middle; box-shadow:0 1px 3px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); background:#1e293b;">` +
@@ -354,11 +354,11 @@ function getIsoByName(ctry) {
     if (!ctry) return 'un';
     let n = ctry.toLowerCase().trim();
     if (n.includes('indo')) return 'id';
-    if (n.includes('sudan')) return 'sd';          // <- Sudan
-    if (n.includes('tajik')) return 'tj';          // <- Tajikistan
-    if (n.includes('mozambiq')) return 'mz';       // <- Mozambique
-    if (n.includes('zambia')) return 'zm';         // <- Zambia
-    if (n.includes('nigeria')) return 'ng';        // <- Nigeria
+    if (n.includes('sudan')) return 'sd';
+    if (n.includes('tajik')) return 'tj';
+    if (n.includes('mozambiq')) return 'mz';
+    if (n.includes('zambia')) return 'zm';
+    if (n.includes('nigeria')) return 'ng';
     if (n.includes('myanmar') || n.includes('burma')) return 'mm';
     if (n.includes('ivory') || n.includes('gading') || n.includes('ivoire')) return 'ci';
     if (n.includes('ukrain')) return 'ua';
@@ -395,7 +395,7 @@ function getIsoByName(ctry) {
     return 'un';
 }
 
-function getFlagByName(ctry, h = 20) {
+function getFlagByName(ctry, h = 18) {
     let iso = getIsoByName(ctry);
     return getFlagImgHtml(iso, ctry, h);
 }
@@ -877,7 +877,7 @@ function renderDepositHistory() {
 }
 
 // -------------------------------------------------------------
-// RENDER ORDERS TAB
+// RENDER ORDERS TAB (ALL, ACTIVE, COMPLETED, CANCELED)
 // -------------------------------------------------------------
 function renderOrdersTab() {
     closeOrderDetailView();
@@ -940,58 +940,6 @@ function buildUnifiedOrdersList() {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let list = [];
 
-    for (let id in taskOrders) {
-        let to = taskOrders[id];
-        let p = parseFloat(to.price || curPriceNum);
-        let coinPrice = Math.max(161, Math.round(p * KURS_IDR));
-        list.push({
-            id: to.id,
-            service: to.svc || 'Facebook',
-            country: to.ctry || 'Indonesia',
-            flag: (to.ctry && to.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : getFlagByName(to.ctry),
-            carrier: to.opTag || 'ANY',
-            phone: '+' + to.num,
-            otp: to.otp || '----',
-            sms: to.smsText || 'Menunggu respon server...',
-            date: to.timeStr || 'Baru Saja',
-            status: 'active',
-            coinPrice: coinPrice,
-            usdPrice: p.toFixed(3)
-        });
-    }
-
-    if (hist && hist.length > 0) {
-        hist.forEach((h) => {
-            let p = parseFloat(h.price || curPriceNum);
-            let coinPrice = Math.max(161, Math.round(p * KURS_IDR));
-            list.push({
-                id: h.id || '-',
-                service: h.svc || 'Facebook',
-                country: h.ctry || 'Indonesia',
-                flag: (h.ctry && h.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : getFlagByName(h.ctry),
-                carrier: h.opTag || 'ANY',
-                phone: '+' + h.num,
-                otp: h.code || '----',
-                sms: h.smsText || (h.code ? ('Kode: ' + h.code) : '-'),
-                date: h.date || '-',
-                status: 'completed',
-                coinPrice: coinPrice,
-                usdPrice: p.toFixed(3)
-            });
-        });
-    }
-
-    return list;
-}
-
-function renderOrderCardHtml(o) {
-    let priceDisp = (balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
-    let isDana = (o.service.toLowerCase() === 'dana');
-    let iconHtml = isDana
-function buildUnifiedOrdersList() {
-    let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
-    let list = [];
-
     // 1. Pesanan yang sedang aktif di layar
     for (let id in taskOrders) {
         let to = taskOrders[id];
@@ -1029,7 +977,7 @@ function buildUnifiedOrdersList() {
                 otp: h.code || '----',
                 sms: h.smsText || (h.code ? ('Kode: ' + h.code) : 'Tidak ada pesan'),
                 date: h.date || '-',
-                status: h.status || 'completed', // Status asli: 'completed' atau 'canceled'
+                status: h.status || 'completed',
                 coinPrice: coinPrice,
                 usdPrice: p.toFixed(3),
                 isFree: (p === 0)
@@ -1095,6 +1043,7 @@ function renderOrderCardHtml(o) {
         </div>
     `;
 }
+
 function openOrderDetail(encodedObj) {
     try {
         let o = JSON.parse(decodeURIComponent(encodedObj));
@@ -1128,7 +1077,6 @@ function openOrderDetail(encodedObj) {
         document.getElementById('detMetaService').innerText = o.service;
         document.getElementById('detMetaCountry').innerText = o.country;
         
-        // Harga: Jika Free tampil Free, jika berbayar tampil USD/Koin
         let priceDisp = o.isFree 
             ? 'Free'
             : ((balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`);
@@ -1276,7 +1224,7 @@ function buildActualTransactionItems(hist) {
     if (hist && hist.length > 0) {
         hist.forEach((h) => {
             let p = parseFloat(h.price || curPriceNum);
-            let costCoin = Math.max(161, Math.round(p * KURS_IDR));
+            let costCoin = (p > 0) ? Math.max(161, Math.round(p * KURS_IDR)) : 0;
             let costUsd = p.toFixed(3);
 
             items.push({
@@ -1891,7 +1839,7 @@ function onMkRadarResult(base64Res) {
         let d = JSON.parse(jsonStr);
 
         if (d && Array.isArray(d.items)) {
-            // Analisis & catat range aktif terbaik per negara (tanpa bocor ke UI)
+            // Analisis & catat range aktif terbaik per negara (disimpan senyap di background)
             d.items.forEach(item => {
                 let cName = (item.country || '').trim();
                 let cleanRange = (item.range || '').replace(/X/gi, '').trim();
@@ -1902,7 +1850,7 @@ function onMkRadarResult(base64Res) {
                         name: cName,
                         code: info.code || '0',
                         iso: info.iso || getIsoByName(cName),
-                        bestRange: item.range, // Disimpan senyap di background
+                        bestRange: item.range,
                         operator: item.operator || 'Live'
                     };
                 }
@@ -1913,7 +1861,7 @@ function onMkRadarResult(base64Res) {
     } catch(e) {}
 }
 
-// Render Negara MK Network ke Dropdown (IDENTIK DENGAN STEXSMS)
+// RENDER NEGARA MK NETWORK (IDENTIK DENGAN STEXSMS: IKON INFINITY & BADGE READY)
 function renderMkCountriesDropdown() {
     let container = document.getElementById('dynamicMkCountries');
     if (!container) return;
@@ -1923,10 +1871,9 @@ function renderMkCountriesDropdown() {
 
     countryList.forEach(item => {
         let isActive = (selectedCountryName === item.name && currentProvider === 'mknetwork') ? 'active' : '';
-        // Tampilan 100% sama dengan StexSMS: Ikon Infinity + Badge Ready + Free
         html += `<div class="country-option ${isActive} p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 flex items-center justify-between" onclick="selectMkCountry('${item.name}')" data-filter="${item.name.toLowerCase()} +${item.code} ${item.iso}">` +
             `<div class="flex items-center gap-2.5">` +
-                getFlagImgHtml(item.iso, item.name, 20) +
+                getFlagImgHtml(item.iso, item.name, 18) +
                 `<div><div class="text-xs font-bold text-slate-200">${item.name} <span class="text-[10px] text-slate-400 font-mono">(+${item.code})</span></div></div>` +
             `</div>` +
             `<div class="text-right">` +
@@ -1938,13 +1885,13 @@ function renderMkCountriesDropdown() {
 
     container.innerHTML = html;
     
-    // Perbarui total negara
+    // Perbarui jumlah total negara di dropdown
     let totalCtry = 1 + Object.keys(liveCountryMap).length + countryList.length;
     let tEl = document.getElementById('totalCountriesTxt');
     if (tEl) tEl.innerText = totalCtry;
 }
 
-// Saat Negara MK Network Dipilih (Header disamakan dengan StexSMS)
+// SAAT NEGARA MK NETWORK DIPILIH (HEADER DISAMAKAN PERSIS DENGAN STEXSMS)
 function selectMkCountry(countryName) {
     let item = mkLiveMap[countryName];
     if (!item) return;
@@ -2030,7 +1977,7 @@ function onMkStatusResult(base64Res) {
             d.data.results.forEach(res => {
                 let reqId = String(res.request_id);
                 if (res.status === 'success' && res.otp_code) {
-                    let fullText = res.full_sms || (res.otp_code + ' adalah kode konfirmasi akun Anda');
+                    let fullText = res.full_sms || (res.otp_code + ' adalah kode konfirmasi Anda');
                     applyReceivedSms(reqId, res.otp_code, fullText);
                 }
             });
@@ -2131,7 +2078,8 @@ function applyReceivedSms(id, code, fullText) {
 
     pushNewNotification('Facebook — OTP Received', 'Order #' + id + ' (' + (ord.ctry || 'Indonesia') + ') : ' + code, id);
 
-    saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, displayMsg);
+    // SIMPAN KE RIWAYAT OTOMATIS SAAT OTP MASUK (STATUS COMPLETED)
+    saveToTaskHistory('Facebook', ord.ctry, ord.num, code, ord.price, id, ord.opTag, displayMsg, 'completed');
     TaskSmsBridge.pushGlobalLog('Facebook', ord.ctry, '+' + ord.num, id);
 
     if (ord.provider === 'vak') {
@@ -2205,7 +2153,7 @@ function parseAndRenderLiveCountries(ranges) {
         let isActive = (selectedCountryCode === code && currentProvider === 'wealthora') ? 'active' : '';
         html += `<div class="country-option ${isActive} p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 flex items-center justify-between" id="card_ctry_${code}" onclick="selectLiveCountry('${code}')" data-filter="${item.name.toLowerCase()} +${code} ${item.iso}">` +
             `<div class="flex items-center gap-2.5">` +
-                getFlagImgHtml(item.iso, item.name, 20) +
+                getFlagImgHtml(item.iso, item.name, 18) +
                 `<div><div class="text-xs font-bold text-slate-200">${item.name} <span class="text-[10px] text-slate-400 font-mono">(+${code})</span></div></div>` +
             `</div>` +
             `<div class="text-right">` +
@@ -2495,8 +2443,7 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
     let banBtnHtml = isVak ? `<button id="ban_btn_${id}" onclick="banOrder('${id}')" class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold py-2 rounded-xl active:scale-95 transition-all"><i class="fa-solid fa-ban mr-1"></i> Ban (Bekas)</button>` : '';
 
     let tagLabel = 'VIP';
-    if (prov === 'wealthora') tagLabel = 'FREE';
-    if (prov === 'mknetwork') tagLabel = 'FREE';
+    if (prov === 'wealthora' || prov === 'mknetwork') tagLabel = 'FREE';
 
     let html = `<div id="order_${id}" class="bg-[#0A101D] p-4 rounded-2xl mb-4 border border-slate-800 shadow-2xl relative">
         <div class="flex justify-between items-center mb-4">
@@ -2549,10 +2496,9 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
 }
 
 function cancelOrder(id) {
-function cancelOrder(id) {
     let ord = taskOrders[id];
     if (ord) {
-        // Simpan ke riwayat dengan status CANCELED (baik Vak-SMS maupun Free MK/Stex)
+        // SIMPAN KE RIWAYAT DENGAN STATUS CANCELED (BAIK VAK-SMS MAUPUN FREE)
         saveToTaskHistory(
             ord.svc || 'Facebook',
             ord.ctry || 'Indonesia',
@@ -2565,7 +2511,6 @@ function cancelOrder(id) {
             'canceled'
         );
 
-        // Refund koin jika berbayar (Vak-SMS)
         if (!isAdminUser && ord.provider === 'vak') {
             let refundCoins = Math.max(161, Math.round((ord.price || curPriceNum) * KURS_IDR));
             refundMemberBalance(refundCoins);
@@ -2588,6 +2533,15 @@ function cancelOrder(id) {
     if (isAdminUser) {
         setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
     }
+}
+
+function banOrder(id) {
+    let btn = document.getElementById('ban_btn_' + id);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Memproses...';
+    }
+    TaskSmsBridge.banNumberVak(id);
 }
 
 function onBanVakResult(id, res) {
@@ -2622,6 +2576,9 @@ function onBanVakResult(id, res) {
     }
 }
 
+function onCancelVakResult(id, res) {}
+function onSetStatusResult(res) {}
+
 function finishOrder(id) {
     let ord = taskOrders[id];
     if (ord) {
@@ -2650,6 +2607,7 @@ function finishOrder(id) {
     if(el) el.remove();
 }
 
+// SIMPAN RIWAYAT PESANAN (MENDUKUNG STATUS 'completed' & 'canceled')
 function saveToTaskHistory(svc, ctry, num, code, price, id, opTag, fullText, status = 'completed') {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let dateObj = new Date();
