@@ -301,6 +301,7 @@ const DIAL_MAP = {
     '242': { name: 'Congo', iso: 'cg' },
     '243': { name: 'DR Congo', iso: 'cd' },
     '244': { name: 'Angola', iso: 'ao' },
+    '249': { name: 'Sudan', iso: 'sd' },          // <- FIX SUDAN
     '250': { name: 'Rwanda', iso: 'rw' },
     '251': { name: 'Ethiopia', iso: 'et' },
     '252': { name: 'Somalia', iso: 'so' },
@@ -308,8 +309,8 @@ const DIAL_MAP = {
     '255': { name: 'Tanzania', iso: 'tz' },
     '256': { name: 'Uganda', iso: 'ug' },
     '257': { name: 'Burundi', iso: 'bi' },
-    '258': { name: 'Mozambique', iso: 'mz' },
-    '260': { name: 'Zambia', iso: 'zm' },
+    '258': { name: 'Mozambique', iso: 'mz' },     // <- FIX MOZAMBIQUE
+    '260': { name: 'Zambia', iso: 'zm' },         // <- FIX ZAMBIA
     '261': { name: 'Madagascar', iso: 'mg' },
     '263': { name: 'Zimbabwe', iso: 'zw' },
     '265': { name: 'Malawi', iso: 'mw' },
@@ -325,6 +326,7 @@ const DIAL_MAP = {
     '966': { name: 'Saudi Arabia', iso: 'sa' },
     '971': { name: 'UAE', iso: 'ae' },
     '977': { name: 'Nepal', iso: 'np' },
+    '992': { name: 'Tajikistan', iso: 'tj' },     // <- FIX TAJIKISTAN (+992)
     '998': { name: 'Uzbekistan', iso: 'uz' }
 };
 
@@ -338,18 +340,26 @@ const indoOperators = [
     { label: 'Smartfren', slug: 'smartfren', file: 'smartfren.png', type: 'logo', initial: 'S', col: 'bg-rose-600' }
 ];
 
-function getFlagImgHtml(isoCode, countryName, displayHeight = 20) {
+function getFlagImgHtml(isoCode, countryName, displayHeight = 18) {
     let iso = (isoCode || 'un').toLowerCase().trim();
-    return `<img src="https://flagcdn.com/h20/${iso}.png" srcset="https://flagcdn.com/h40/${iso}.png 2x, https://flagcdn.com/h60/${iso}.png 3x" height="${displayHeight}" style="height:${displayHeight}px; width:auto; border-radius:3px; display:inline-block; vertical-align:middle; flex-shrink:0;" alt="" onerror="this.onerror=null;this.src='https://flagcdn.com/h20/un.png';">`;
+    // Rasio seragam: Lebar 26px x Tinggi 18px (Object-fit cover mencegah bendera gepeng/tidak sama)
+    let w = Math.round(displayHeight * 1.4); 
+    let h = displayHeight;
+    return `<span style="width:${w}px; height:${h}px; border-radius:4px; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; vertical-align:middle; box-shadow:0 1px 3px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); background:#1e293b;">` +
+        `<img src="https://flagcdn.com/w40/${iso}.png" style="width:100%; height:100%; object-fit:cover; display:block;" alt="${iso}" onerror="this.onerror=null;this.src='https://flagcdn.com/w40/un.png';">` +
+    `</span>`;
 }
 
 function getIsoByName(ctry) {
     if (!ctry) return 'un';
     let n = ctry.toLowerCase().trim();
     if (n.includes('indo')) return 'id';
-    if (n.includes('zambia')) return 'zm';
-    if (n.includes('myanmar')) return 'mm';
-    if (n.includes('sierra')) return 'sl';
+    if (n.includes('sudan')) return 'sd';          // <- Sudan
+    if (n.includes('tajik')) return 'tj';          // <- Tajikistan
+    if (n.includes('mozambiq')) return 'mz';       // <- Mozambique
+    if (n.includes('zambia')) return 'zm';         // <- Zambia
+    if (n.includes('nigeria')) return 'ng';        // <- Nigeria
+    if (n.includes('myanmar') || n.includes('burma')) return 'mm';
     if (n.includes('ivory') || n.includes('gading') || n.includes('ivoire')) return 'ci';
     if (n.includes('ukrain')) return 'ua';
     if (n.includes('cameroon') || n.includes('kamerun')) return 'cm';
@@ -364,7 +374,6 @@ function getIsoByName(ctry) {
     if (n.includes('benin')) return 'bj';
     if (n.includes('liberia')) return 'lr';
     if (n.includes('ghana')) return 'gh';
-    if (n.includes('nigeria')) return 'ng';
     if (n.includes('kenya')) return 'ke';
     if (n.includes('uganda')) return 'ug';
     if (n.includes('malawi')) return 'mw';
