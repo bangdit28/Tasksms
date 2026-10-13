@@ -1,7 +1,7 @@
 let authMode = 'login'; 
 let activeUser = ''; 
 let isAdminUser = false;
-let currentProvider = 'vak';
+let currentProvider = 'vak'; // 'vak', 'wealthora', 'mknetwork'
 let selectedCountryCode = 'id';
 let selectedCountryName = 'Indonesia';
 let selectedCountryIso = 'id';
@@ -22,6 +22,13 @@ let currentTxFilter = 'all';
 let currentOrderTab = 'all';
 let currentOpenedOrder = null;
 let currentAppLang = 'id'; // 'id' atau 'en'
+
+// -------------------------------------------------------------
+// KONFIGURASI API MKNETWORK
+// -------------------------------------------------------------
+const MKNETWORK_API_KEY = 'ac25788f383c21299329f85d';
+const MKNETWORK_BASE_URL = 'https://mknetworkbd.com/api/v2/public';
+let selectedMknetworkRange = '23276345XXX';
 
 // -------------------------------------------------------------
 // SINKRONISASI FIREBASE REALTIME DENGAN APP WEB
@@ -49,7 +56,7 @@ const LANG_PACK = {
         nav_wallet: 'Dompet',
         nav_profil: 'Profil',
         greeting_prefix: 'Hai',
-        home_sub: 'Pilih nomor verifikasi Anda',
+        home_sub: 'Pilih nomor verifikasi kamu',
         total_orders: 'Total Transaksi',
         success_rate: 'Rasio Sukses',
         tap_refresh: 'Ketuk untuk segarkan negara & stok',
@@ -346,6 +353,7 @@ function getIsoByName(ctry) {
     if (!ctry) return 'un';
     let n = ctry.toLowerCase().trim();
     if (n.includes('indo')) return 'id';
+    if (n.includes('sierra') || n.includes('leone')) return 'sl';
     if (n.includes('ivory') || n.includes('gading') || n.includes('ivoire')) return 'ci';
     if (n.includes('ukrain')) return 'ua';
     if (n.includes('cameroon') || n.includes('kamerun')) return 'cm';
@@ -466,7 +474,12 @@ function renderHomeHeader() {
                 ? formatRupiahOnly(lastServerBalanceUsd) 
                 : '$' + lastServerBalanceUsd.toFixed(3);
         } else {
-            bEl.innerText = getMemberCoinBalance().toLocaleString('id-ID');
+            let memberCoins = getMemberCoinBalance();
+            if (balanceCurrencyMode === 'USD') {
+                bEl.innerText = '$' + (memberCoins / KURS_IDR).toFixed(3);
+            } else {
+                bEl.innerText = memberCoins.toLocaleString('id-ID') + ' Koin';
+            }
         }
     }
 
@@ -622,7 +635,7 @@ function checkMemberBalanceState() {
     let btn = document.getElementById('btnBuy');
     if (!btn) return;
 
-    if (currentProvider === 'wealthora' || selectedCountryCode !== 'id') {
+    if (currentProvider === 'wealthora') {
         btn.disabled = false;
         btn.className = 'glow-btn w-full text-white font-black py-3 rounded-xl text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2';
         btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
@@ -713,7 +726,6 @@ function updateAllBalanceUI(val) {
     }
 }
 
-
 function onGetMasterBalanceResult(res) {
     try {
         let d = JSON.parse(res);
@@ -739,7 +751,7 @@ function handleRefreshSaldo() {
         updateAllBalanceUI(lastServerBalanceUsd);
         alert(currentAppLang === 'en' 
             ? 'Your current balance: ' + getMemberCoinBalance().toLocaleString('id-ID') + ' coins.'
-            : 'Saldo koin Anda saat ini: ' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin.');
+            : 'Saldo koin kamu saat ini: ' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin.');
     }
 }
 
@@ -813,7 +825,6 @@ function submitAdminTransferAction() {
     if (!target) return alert('Username member tujuan wajib diisi!');
     if (amtCoin <= 0) return alert('Nominal harus lebih dari 0!');
 
-    // Panggil Bridge Java untuk Transfer Langsung ke Firebase Realtime DB
     TaskSmsBridge.transferCoinsToMember(target, amtCoin, usdVal.toFixed(3));
 }
 
@@ -981,7 +992,7 @@ function buildUnifiedOrdersList() {
 }
 
 function renderOrderCardHtml(o) {
-    let priceDisp = (balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
+    let priceDisp = (balanceCurrencyMode === 'USD') ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
     let isDana = (o.service.toLowerCase() === 'dana');
     let iconHtml = isDana
         ? `<div class="w-10 h-10 rounded-2xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center font-bold text-xs border border-cyan-500/30 shrink-0">DA</div>`
@@ -1066,7 +1077,7 @@ function openOrderDetail(encodedObj) {
         document.getElementById('detMetaService').innerText = o.service;
         document.getElementById('detMetaCountry').innerText = o.flag + ' ' + o.country;
         
-        let priceDisp = (balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
+        let priceDisp = (balanceCurrencyMode === 'USD') ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
         document.getElementById('detMetaPrice').innerText = priceDisp;
         document.getElementById('detMetaCreated').innerText = o.date;
 
@@ -1252,11 +1263,11 @@ function renderTransactionCardHtml(it) {
     let amtColor = isCredit ? 'text-emerald-400' : 'text-rose-400';
     let sign = isCredit ? '+' : '-';
 
-    let displayAmount = (balanceCurrencyMode === 'USD' && isAdminUser) 
+    let displayAmount = (balanceCurrencyMode === 'USD') 
         ? `${sign}$${it.usdCost}` 
         : `<span class="text-amber-300">🪙</span> ${sign}${it.coinCost}`;
         
-    let displayBalance = (balanceCurrencyMode === 'USD' && isAdminUser) 
+    let displayBalance = (balanceCurrencyMode === 'USD') 
         ? `$${it.usdBalance}` 
         : `<span class="text-amber-300">🪙</span> ${it.coinBalance}`;
 
@@ -1491,8 +1502,8 @@ function openDeleteAccountModal() {
     let html = `
         <div class="space-y-3">
             <p class="text-[11px] text-rose-300 leading-relaxed font-bold">Peringatan: Seluruh data lokal akun akan dibersihkan.</p>
-            <p class="text-[10px] text-slate-400">Ketik username Anda (<b>${activeUser}</b>) untuk konfirmasi:</p>
-            <input type="text" id="inpConfirmDelete" class="auth-input font-mono text-xs" placeholder="Ketik username Anda">
+            <p class="text-[10px] text-slate-400">Ketik username kamu (<b>${activeUser}</b>) untuk konfirmasi:</p>
+            <input type="text" id="inpConfirmDelete" class="auth-input font-mono text-xs" placeholder="Ketik username kamu">
             <button onclick="processDeleteAccountAction()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
                 Hapus Akun
             </button>
@@ -1503,7 +1514,7 @@ function openDeleteAccountModal() {
 
 function processDeleteAccountAction() {
     let val = (document.getElementById('inpConfirmDelete').value || '').trim();
-    if(val !== activeUser) return alert('Username yang Anda masukkan tidak cocok!');
+    if(val !== activeUser) return alert('Username yang kamu masukkan tidak cocok!');
     closeProfModal();
     alert('Akun telah dinonaktifkan.');
     TaskSmsBridge.doLogout();
@@ -1614,12 +1625,20 @@ setInterval(() => {
         TaskSmsBridge.fetchWorkerData();
         
         let hasWealthOrder = false;
+        let hasMkOrder = false;
+
         for(let k in taskOrders) { 
             if(taskOrders[k].provider === 'wealthora') hasWealthOrder = true; 
+            if(taskOrders[k].provider === 'mknetwork') hasMkOrder = true;
         }
+
         if (hasWealthOrder) {
             TaskSmsBridge.getWealthSuccessOtp();
             TaskSmsBridge.getWealthConsole();
+        }
+
+        if (hasMkOrder) {
+            checkMknetworkStatus();
         }
 
         if (activeIds.length > 0) {
@@ -1628,7 +1647,6 @@ setInterval(() => {
 
             let curOrd = taskOrders[currentPollingId];
             if (curOrd && curOrd.provider === 'vak') {
-                // DIPANGGIL SELALU AGAR SMS KE-2, 3, 4 TETAP DIPANTAU
                 TaskSmsBridge.getSmsCode(currentPollingId);
                 TaskSmsBridge.getVakSmsInbox(currentPollingId);
                 TaskSmsBridge.checkVakOrder(currentPollingId);
@@ -1658,7 +1676,7 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
-// HANDLER VAK-SMS CLASSIC (PRESISI PER ORDER ID)
+// HANDLER VAK-SMS CLASSIC
 function onGetSmsCodeResult(idNum, res) {
     let id = idNum || currentPollingId; 
     let responseText = res;
@@ -1692,7 +1710,7 @@ function onGetSmsCodeResult(idNum, res) {
     } catch(e) {}
 }
 
-// HANDLER INBOX VAK-SMS (MENGITERASI SELURUH ARRAY INBOX)
+// HANDLER INBOX VAK-SMS
 function onVakInboxResult(id, base64Res) {
     if (!id || !base64Res) return;
     try {
@@ -1793,6 +1811,109 @@ function onWealthSuccessOtpResult(res) {
 }
 
 // -------------------------------------------------------------
+// FUNGSI UTAMA API MKNETWORK (AMBIL NOMOR & CEK STATUS BATCH)
+// -------------------------------------------------------------
+async function getMknetworkNumber(range) {
+    let btn = document.getElementById('btnBuy');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Mengambil Nomor MKNetwork...';
+    }
+
+    try {
+        let response = await fetch(`${MKNETWORK_BASE_URL}/getnum/number`, {
+            method: 'POST',
+            headers: {
+                'mknetwork-key': MKNETWORK_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ range: range || selectedMknetworkRange || "23276345XXX" })
+        });
+        
+        let result = await response.json();
+
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
+        }
+
+        if (result && result.meta && result.meta.code === 200 && result.data) {
+            let d = result.data;
+            let reqId = String(d.request_id);
+            let fullNum = String(d.full_number || d.number).replace(/[^0-9]/g, '');
+            let dateNow = new Date();
+            let timeStr = dateNow.getHours().toString().padStart(2, '0') + ':' + dateNow.getMinutes().toString().padStart(2, '0');
+
+            taskOrders[reqId] = {
+                id: reqId,
+                num: fullNum,
+                price: curPriceNum,
+                svc: 'Facebook',
+                ctry: d.country || 'Sierra Leone',
+                opTag: d.operator || 'MKNETWORK',
+                created: Date.now(),
+                timeStr: timeStr,
+                otp: null,
+                smsText: 'Menunggu SMS masuk dari server...',
+                provider: 'mknetwork',
+                smsCount: 0,
+                receivedOtps: []
+            };
+
+            persistOrders();
+            renderOrderCardUI(reqId, fullNum, curPriceNum, d.operator || 'MKNETWORK', null, 'Menunggu SMS masuk dari server...', timeStr, true, 'mknetwork');
+            if (!activeIds.includes(reqId)) activeIds.push(reqId);
+
+            let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
+            deductMemberBalance(orderCostCoins);
+
+            if (isAdminUser) {
+                TaskSmsBridge.getMasterServerBalance();
+            }
+        } else {
+            alert('Gagal mengambil nomor MKNetwork: ' + (result.message || 'Stok tidak tersedia'));
+        }
+    } catch (e) {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
+        }
+        alert('Terjadi kesalahan koneksi ke server MKNetwork.');
+    }
+}
+
+async function checkMknetworkStatus() {
+    let mkIds = activeIds.filter(id => taskOrders[id] && taskOrders[id].provider === 'mknetwork');
+    if (mkIds.length === 0) return;
+
+    let batch = mkIds.slice(0, 100).map(id => parseInt(id) || id);
+
+    try {
+        let response = await fetch(`${MKNETWORK_BASE_URL}/check/status`, {
+            method: 'POST',
+            headers: {
+                'mknetwork-key': MKNETWORK_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ request_ids: batch })
+        });
+
+        let result = await response.json();
+        if (result && result.data && Array.isArray(result.data.results)) {
+            result.data.results.forEach(item => {
+                let reqId = String(item.request_id);
+                if (item.status === 'success' && item.otp_code) {
+                    let fullSms = item.full_sms || (item.otp_code + ' adalah kode verifikasi akun kamu');
+                    applyReceivedSms(reqId, item.otp_code, fullSms);
+                } else if (item.status === 'expired') {
+                    cancelOrder(reqId);
+                }
+            });
+        }
+    } catch (e) {}
+}
+
+// -------------------------------------------------------------
 // INJEKSI FULL TEXT INBOX (LOCKED TO LATEST)
 // -------------------------------------------------------------
 function applyFullInboxMessage(id, code, fullText) {
@@ -1826,7 +1947,7 @@ function applyFullInboxMessage(id, code, fullText) {
 }
 
 // -------------------------------------------------------------
-// LOGIKA UTAMA: TERIMA SMS (DIKUNCI AGAR TIDAK BOLAK-BALIK)
+// LOGIKA UTAMA: TERIMA SMS
 // -------------------------------------------------------------
 function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
@@ -1852,7 +1973,6 @@ function applyReceivedSms(id, code, fullText) {
         return; 
     }
 
-    // TERIMA KODE BARU
     ord.receivedOtps.push(code);
     ord.smsCount = ord.receivedOtps.length;
     let isNextSms = ord.receivedOtps.length > 1;
@@ -2004,6 +2124,32 @@ function selectCountryId() {
     queryRealtimeStockVak();
 }
 
+function selectMknetworkCountry(code, countryName, range) {
+    selectedCountryCode = code;
+    selectedCountryName = countryName;
+    selectedCountryIso = getIsoByName(countryName);
+    currentProvider = 'mknetwork';
+    selectedMknetworkRange = range || "23276345XXX";
+
+    document.querySelectorAll('.country-option').forEach(c => c.classList.remove('active'));
+    let cardEl = document.getElementById('card_ctry_' + code);
+    if(cardEl) cardEl.classList.add('active');
+
+    closeCountryDropdown();
+
+    document.getElementById('operatorSection').style.display = 'none';
+    document.getElementById('selPriceLabelTxt').innerText = t('price_label');
+    
+    let pRupiah = formatRupiahOnly(curPriceNum);
+    let sProvEl = document.getElementById('selProviderBadge');
+    if (sProvEl) sProvEl.innerHTML = '$' + curPriceNum.toFixed(3) + ' <span class="text-[11px] text-slate-300">(' + pRupiah + ')</span>';
+
+    document.getElementById('selTargetTxt').innerHTML = `${getFlagImgHtml(selectedCountryIso, countryName, 18)} <span>${countryName}</span> <span class="text-[10px] bg-slate-800 text-cyan-400 px-1.5 py-0.5 rounded border border-slate-700 uppercase font-mono">MKNETWORK</span>`;
+    document.getElementById('selRealtimeStock').innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>MKNetwork Ready</span>`;
+
+    checkMemberBalanceState();
+}
+
 function selectLiveCountry(code) {
     let item = liveCountryMap[code]; if(!item) return;
     selectedCountryCode = code;
@@ -2115,16 +2261,19 @@ function onGetCountNumberResult(res) {
 }
 
 function executeOrderNow() {
-    if (currentProvider === 'vak') {
+    if (currentProvider === 'vak' || currentProvider === 'mknetwork') {
         let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
         if (!isAdminUser && getMemberCoinBalance() < orderCostCoins) {
-            return alert('Saldo koin Anda tidak mencukupi (' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin). Silakan isi saldo terlebih dahulu.');
+            return alert('Saldo koin kamu tidak mencukupi (' + getMemberCoinBalance().toLocaleString('id-ID') + ' koin). Silakan isi saldo terlebih dahulu.');
         }
     }
 
     let btn = document.getElementById('btnBuy');
     btn.disabled = true;
-    if (selectedCountryCode !== 'id') {
+
+    if (currentProvider === 'mknetwork') {
+        getMknetworkNumber(selectedMknetworkRange);
+    } else if (selectedCountryCode !== 'id') {
         let item = liveCountryMap[selectedCountryCode];
         if (!item || !item.ranges || item.ranges.length === 0) return alert('Pool negara ini belum siap.');
         let bestRange = item.ranges[0].replace(/X/gi, '').trim();
@@ -2283,7 +2432,7 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
 function cancelOrder(id) {
     let ord = taskOrders[id];
     if (ord) {
-        if (!isAdminUser && ord.provider === 'vak') {
+        if (!isAdminUser && (ord.provider === 'vak' || ord.provider === 'mknetwork')) {
             let refundCoins = Math.max(161, Math.round((ord.price || curPriceNum) * KURS_IDR));
             refundMemberBalance(refundCoins);
             pushNewNotification('Order Cancelled & Refunded', 'Pesanan #' + id + ' dibatalkan. Koin +' + refundCoins.toLocaleString('id-ID') + ' telah dikembalikan.', id);
