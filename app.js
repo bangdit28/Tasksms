@@ -1840,6 +1840,7 @@ function onMkRadarResult(base64Res) {
     } catch(e) {}
 }
 
+// Render Negara MK Network ke Dropdown (IDENTIK DENGAN STEXSMS)
 function renderMkCountriesDropdown() {
     let container = document.getElementById('dynamicMkCountries');
     if (!container) return;
@@ -1849,14 +1850,14 @@ function renderMkCountriesDropdown() {
 
     countryList.forEach(item => {
         let isActive = (selectedCountryName === item.name && currentProvider === 'mknetwork') ? 'active' : '';
-        // Prefix Range disembunyikan total! Yang tampil hanya nama negara & dial code (+xxx)
-        html += `<div class="country-option ${isActive} p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 flex items-center justify-between" onclick="selectMkCountry('${item.name}')" data-filter="${item.name.toLowerCase()} +${item.code}">` +
+        // Tampilan 100% sama dengan StexSMS: Ikon Infinity + Badge Ready + Free
+        html += `<div class="country-option ${isActive} p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 flex items-center justify-between" onclick="selectMkCountry('${item.name}')" data-filter="${item.name.toLowerCase()} +${item.code} ${item.iso}">` +
             `<div class="flex items-center gap-2.5">` +
                 getFlagImgHtml(item.iso, item.name, 20) +
                 `<div><div class="text-xs font-bold text-slate-200">${item.name} <span class="text-[10px] text-slate-400 font-mono">(+${item.code})</span></div></div>` +
             `</div>` +
             `<div class="text-right">` +
-                `<div class="text-xs font-black text-emerald-400"><i class="fa-solid fa-bolt"></i></div>` +
+                `<div class="text-xs font-black text-emerald-400"><i class="fa-solid fa-infinity"></i></div>` +
                 `<div class="text-[9px] font-mono text-cyan-400 font-medium">Ready</div>` +
             `</div>` +
         `</div>`;
@@ -1864,12 +1865,13 @@ function renderMkCountriesDropdown() {
 
     container.innerHTML = html;
     
-    // Perbarui jumlah total negara di dropdown
+    // Perbarui total negara
     let totalCtry = 1 + Object.keys(liveCountryMap).length + countryList.length;
     let tEl = document.getElementById('totalCountriesTxt');
     if (tEl) tEl.innerText = totalCtry;
 }
 
+// Saat Negara MK Network Dipilih (Header disamakan dengan StexSMS)
 function selectMkCountry(countryName) {
     let item = mkLiveMap[countryName];
     if (!item) return;
@@ -1884,15 +1886,15 @@ function selectMkCountry(countryName) {
 
     document.getElementById('selDropdownFlag').innerHTML = getFlagImgHtml(item.iso, item.name, 20);
     document.getElementById('selDropdownTitle').innerHTML = `${item.name} <span class="text-[10px] text-slate-400 font-mono">(+${item.code})</span>`;
-    document.getElementById('selDropdownSub').innerText = 'Server Cloud • Live Active';
-    document.getElementById('selDropdownBadge').innerText = 'Ready';
-    document.getElementById('selDropdownBadge').className = 'text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded';
+    document.getElementById('selDropdownSub').innerText = 'Server Global • Cloud Pool';
+    document.getElementById('selDropdownBadge').innerText = 'Free';
+    document.getElementById('selDropdownBadge').className = 'text-[9px] font-mono font-bold text-cyan-400 bg-cyan-950/80 border border-cyan-500/30 px-2 py-0.5 rounded';
 
     document.getElementById('operatorSection').style.display = 'none';
     document.getElementById('selPriceLabelTxt').innerText = 'BIAYA ALOKASI';
-    document.getElementById('selProviderBadge').innerHTML = '<span class="text-emerald-400 font-black"><i class="fa-solid fa-bolt text-xs mr-1"></i>Auto Ready</span>';
+    document.getElementById('selProviderBadge').innerHTML = '<span class="text-emerald-400 font-black"><i class="fa-solid fa-infinity text-xs mr-1"></i>Free</span>';
     document.getElementById('selTargetTxt').innerHTML = `${getFlagImgHtml(item.iso, item.name, 18)} <span>${item.name}</span> <span class="text-[10px] bg-slate-800 text-emerald-400 px-1.5 py-0.5 rounded border border-slate-700 uppercase font-mono">+${item.code}</span>`;
-    document.getElementById('selRealtimeStock').innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Sinyal Aktif</span>`;
+    document.getElementById('selRealtimeStock').innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Pool Ready</span>`;
 
     checkMemberBalanceState();
 }
@@ -2421,7 +2423,7 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
 
     let tagLabel = 'VIP';
     if (prov === 'wealthora') tagLabel = 'FREE';
-    if (prov === 'mknetwork') tagLabel = 'CLOUD';
+    if (prov === 'mknetwork') tagLabel = 'FREE';
 
     let html = `<div id="order_${id}" class="bg-[#0A101D] p-4 rounded-2xl mb-4 border border-slate-800 shadow-2xl relative">
         <div class="flex justify-between items-center mb-4">
