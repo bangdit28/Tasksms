@@ -988,16 +988,75 @@ function renderOrderCardHtml(o) {
     let priceDisp = (balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
     let isDana = (o.service.toLowerCase() === 'dana');
     let iconHtml = isDana
+function buildUnifiedOrdersList() {
+    let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
+    let list = [];
+
+    // 1. Pesanan yang sedang aktif di layar
+    for (let id in taskOrders) {
+        let to = taskOrders[id];
+        let p = parseFloat(to.price || 0);
+        let coinPrice = (p > 0) ? Math.max(161, Math.round(p * KURS_IDR)) : 0;
+        list.push({
+            id: to.id,
+            service: to.svc || 'Facebook',
+            country: to.ctry || 'Indonesia',
+            flag: (to.ctry && to.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : getFlagByName(to.ctry),
+            carrier: to.opTag || 'ANY',
+            phone: '+' + to.num,
+            otp: to.otp || '----',
+            sms: to.smsText || 'Menunggu respon server...',
+            date: to.timeStr || 'Baru Saja',
+            status: 'active',
+            coinPrice: coinPrice,
+            usdPrice: p.toFixed(3),
+            isFree: (p === 0)
+        });
+    }
+
+    // 2. Pesanan dari database riwayat (Selesai maupun Batal)
+    if (hist && hist.length > 0) {
+        hist.forEach((h) => {
+            let p = parseFloat(h.price || 0);
+            let coinPrice = (p > 0) ? Math.max(161, Math.round(p * KURS_IDR)) : 0;
+            list.push({
+                id: h.id || '-',
+                service: h.svc || 'Facebook',
+                country: h.ctry || 'Indonesia',
+                flag: (h.ctry && h.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : getFlagByName(h.ctry),
+                carrier: h.opTag || 'ANY',
+                phone: (h.num && String(h.num).startsWith('+')) ? h.num : ('+' + (h.num || '')),
+                otp: h.code || '----',
+                sms: h.smsText || (h.code ? ('Kode: ' + h.code) : 'Tidak ada pesan'),
+                date: h.date || '-',
+                status: h.status || 'completed', // Status asli: 'completed' atau 'canceled'
+                coinPrice: coinPrice,
+                usdPrice: p.toFixed(3),
+                isFree: (p === 0)
+            });
+        });
+    }
+
+    return list;
+}
+
+function renderOrderCardHtml(o) {
+    let priceDisp = o.isFree 
+        ? `<span class="text-emerald-400 font-bold font-mono">Free</span>`
+        : ((balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`);
+        
+    let isDana = (o.service.toLowerCase() === 'dana');
+    let iconHtml = isDana
         ? `<div class="w-10 h-10 rounded-2xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center font-bold text-xs border border-cyan-500/30 shrink-0">DA</div>`
         : `<div class="w-10 h-10 rounded-2xl bg-blue-600/20 text-blue-400 flex items-center justify-center text-lg border border-blue-500/30 shrink-0"><i class="fa-brands fa-facebook"></i></div>`;
 
     let statusHtml = '';
     if (o.status === 'completed') {
         statusHtml = `<span class="text-[10px] font-bold text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-check text-[9px]"></i> Completed</span>`;
-    } else if (o.status === 'expired') {
-        statusHtml = `<span class="text-[10px] font-bold text-amber-400 flex items-center gap-1"><i class="fa-solid fa-clock text-[9px]"></i> Expired</span>`;
     } else if (o.status === 'canceled') {
         statusHtml = `<span class="text-[10px] font-bold text-rose-400 flex items-center gap-1"><i class="fa-solid fa-xmark text-[9px]"></i> Canceled</span>`;
+    } else if (o.status === 'expired') {
+        statusHtml = `<span class="text-[10px] font-bold text-amber-400 flex items-center gap-1"><i class="fa-solid fa-clock text-[9px]"></i> Expired</span>`;
     } else {
         statusHtml = `<span class="text-[10px] font-bold text-cyan-400 flex items-center gap-1 animate-pulse"><i class="fa-solid fa-arrows-rotate fa-spin text-[9px]"></i> Active</span>`;
     }
@@ -1036,7 +1095,6 @@ function renderOrderCardHtml(o) {
         </div>
     `;
 }
-
 function openOrderDetail(encodedObj) {
     try {
         let o = JSON.parse(decodeURIComponent(encodedObj));
@@ -1044,22 +1102,22 @@ function openOrderDetail(encodedObj) {
 
         document.getElementById('detOrderIdHeader').innerText = 'Order #' + o.id;
         document.getElementById('detServiceTitle').innerText = o.service;
-        document.getElementById('detCountryFlag').innerText = o.flag;
+        document.getElementById('detCountryFlag').innerHTML = o.flag;
         document.getElementById('detCountryName').innerText = o.country;
         document.getElementById('detCarrierTag').innerText = o.carrier;
         
         let stBadge = document.getElementById('detStatusBadge');
         if (o.status === 'completed') {
-            stBadge.innerText = 'Completed';
+            stBadge.innerText = 'COMPLETED';
             stBadge.className = 'text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-lg';
-        } else if (o.status === 'expired') {
-            stBadge.innerText = 'Expired';
-            stBadge.className = 'text-[10px] font-black uppercase text-amber-400 bg-amber-950/80 border border-amber-500/30 px-2.5 py-1 rounded-lg';
         } else if (o.status === 'canceled') {
-            stBadge.innerText = 'Canceled';
+            stBadge.innerText = 'CANCELED';
             stBadge.className = 'text-[10px] font-black uppercase text-rose-400 bg-rose-950/80 border border-rose-500/30 px-2.5 py-1 rounded-lg';
+        } else if (o.status === 'expired') {
+            stBadge.innerText = 'EXPIRED';
+            stBadge.className = 'text-[10px] font-black uppercase text-amber-400 bg-amber-950/80 border border-amber-500/30 px-2.5 py-1 rounded-lg';
         } else {
-            stBadge.innerText = 'Active';
+            stBadge.innerText = 'ACTIVE';
             stBadge.className = 'text-[10px] font-black uppercase text-cyan-400 bg-cyan-950/80 border border-cyan-500/30 px-2.5 py-1 rounded-lg';
         }
 
@@ -1068,13 +1126,19 @@ function openOrderDetail(encodedObj) {
         document.getElementById('detSmsBody').innerText = o.sms;
 
         document.getElementById('detMetaService').innerText = o.service;
-        document.getElementById('detMetaCountry').innerText = o.flag + ' ' + o.country;
+        document.getElementById('detMetaCountry').innerText = o.country;
         
-        let priceDisp = (balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`;
+        // Harga: Jika Free tampil Free, jika berbayar tampil USD/Koin
+        let priceDisp = o.isFree 
+            ? 'Free'
+            : ((balanceCurrencyMode === 'USD' && isAdminUser) ? `$${o.usdPrice}` : `🪙 ${o.coinPrice.toLocaleString('id-ID')}`);
+            
         document.getElementById('detMetaPrice').innerText = priceDisp;
         document.getElementById('detMetaCreated').innerText = o.date;
 
         let timeOnly = o.date.includes(',') ? o.date.split(',')[1].trim() : o.date;
+        let hasMsg = (o.sms && o.sms !== 'Menunggu respon server...' && o.sms !== 'Pesanan dibatalkan oleh pengguna');
+        document.getElementById('detMsgCount').innerText = hasMsg ? '(1)' : '(0)';
         document.getElementById('detMsgTime').innerText = timeOnly;
         document.getElementById('detMsgText').innerText = o.sms;
 
@@ -2485,38 +2549,62 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
 }
 
 function cancelOrder(id) {
+function cancelOrder(id) {
     let ord = taskOrders[id];
     if (ord) {
+        // Simpan ke riwayat dengan status CANCELED (baik Vak-SMS maupun Free MK/Stex)
+        saveToTaskHistory(
+            ord.svc || 'Facebook',
+            ord.ctry || 'Indonesia',
+            ord.num,
+            ord.otp || '----',
+            ord.price || 0,
+            id,
+            ord.opTag || 'ANY',
+            'Pesanan dibatalkan oleh pengguna',
+            'canceled'
+        );
+
+        // Refund koin jika berbayar (Vak-SMS)
         if (!isAdminUser && ord.provider === 'vak') {
             let refundCoins = Math.max(161, Math.round((ord.price || curPriceNum) * KURS_IDR));
             refundMemberBalance(refundCoins);
             pushNewNotification('Order Cancelled & Refunded', 'Pesanan #' + id + ' dibatalkan. Koin +' + refundCoins.toLocaleString('id-ID') + ' telah dikembalikan.', id);
+        } else {
+            pushNewNotification('Order Cancelled', 'Pesanan #' + id + ' (' + (ord.ctry || 'Global') + ') telah dibatalkan.', id);
         }
+
         if (ord.provider === 'vak') {
             TaskSmsBridge.cancelNumberVak(id);
         }
     }
+
     delete taskOrders[id];
     persistOrders();
     activeIds = activeIds.filter(item => item !== id);
-    let el = document.getElementById('order_' + id); if(el) el.remove();
+    let el = document.getElementById('order_' + id); 
+    if(el) el.remove();
+
     if (isAdminUser) {
         setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
     }
 }
 
-function banOrder(id) {
-    let btn = document.getElementById('ban_btn_' + id);
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Memproses...';
-    }
-    TaskSmsBridge.banNumberVak(id);
-}
-
 function onBanVakResult(id, res) {
     let ord = taskOrders[id];
     if (ord) {
+        saveToTaskHistory(
+            ord.svc || 'Facebook',
+            ord.ctry || 'Indonesia',
+            ord.num,
+            ord.otp || '----',
+            ord.price || 0,
+            id,
+            ord.opTag || 'ANY',
+            'Nomor diban (bekas)',
+            'canceled'
+        );
+
         if (!isAdminUser && ord.provider === 'vak') {
             let refundCoins = Math.max(161, Math.round((ord.price || curPriceNum) * KURS_IDR));
             refundMemberBalance(refundCoins);
@@ -2526,45 +2614,70 @@ function onBanVakResult(id, res) {
     delete taskOrders[id];
     persistOrders();
     activeIds = activeIds.filter(item => item !== id);
-    let el = document.getElementById('order_' + id); if(el) el.remove();
+    let el = document.getElementById('order_' + id); 
+    if(el) el.remove();
+
     if (isAdminUser) {
         setTimeout(() => { TaskSmsBridge.getMasterServerBalance(); }, 1200);
     }
 }
 
-function onCancelVakResult(id, res) {}
-function onSetStatusResult(res) {}
-
 function finishOrder(id) {
     let ord = taskOrders[id];
-    if (ord && ord.provider === 'vak') { 
-        TaskSmsBridge.setStatus(id, 'end'); 
+    if (ord) {
+        saveToTaskHistory(
+            ord.svc || 'Facebook',
+            ord.ctry || 'Indonesia',
+            ord.num,
+            ord.otp || '----',
+            ord.price || 0,
+            id,
+            ord.opTag || 'ANY',
+            ord.smsText || (ord.otp ? ('Kode OTP: ' + ord.otp) : 'Pesanan selesai'),
+            'completed'
+        );
+
+        if (ord.provider === 'vak') { 
+            TaskSmsBridge.setStatus(id, 'end'); 
+        }
+        pushNewNotification('Facebook — Completed', 'Order #' + id + ' (' + (ord.ctry || 'Indonesia') + ')', id);
     }
-    
-    pushNewNotification('Facebook — Completed', 'Order #' + id + ' (' + (ord ? ord.ctry : 'Indonesia') + ')', id);
 
     delete taskOrders[id];
     persistOrders();
     activeIds = activeIds.filter(item => item !== id);
-    let el = document.getElementById('order_' + id); if(el) el.remove();
+    let el = document.getElementById('order_' + id); 
+    if(el) el.remove();
 }
 
-function saveToTaskHistory(svc, ctry, num, code, price, id, opTag, fullText) {
+function saveToTaskHistory(svc, ctry, num, code, price, id, opTag, fullText, status = 'completed') {
     let hist = JSON.parse(TaskSmsBridge.getHistory() || '[]');
     let dateObj = new Date();
     let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
                   dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    let existingIndex = hist.findIndex(h => h.num === num && h.svc === svc);
+    
+    let existingIndex = hist.findIndex(h => String(h.id) === String(id) || (h.num === num && h.svc === svc));
+    
     if (existingIndex !== -1) {
         let existingEntry = hist[existingIndex];
-        if (!existingEntry.code.includes(code)) {
-            existingEntry.code = existingEntry.code + ', ' + code;
-            existingEntry.smsText = fullText;
-            hist.splice(existingIndex, 1);
-            hist.unshift(existingEntry);
-        }
+        existingEntry.code = (code && code !== '----') ? code : existingEntry.code;
+        existingEntry.smsText = fullText || existingEntry.smsText;
+        existingEntry.status = status;
+        hist.splice(existingIndex, 1);
+        hist.unshift(existingEntry);
     } else {
-        hist.unshift({ svc: svc, ctry: ctry, num: num, code: code, price: price, date: dateStr, id: id, opTag: opTag, smsText: fullText });
+        hist.unshift({ 
+            id: id || Date.now().toString(),
+            svc: svc || 'Facebook', 
+            ctry: ctry || 'Indonesia', 
+            num: num, 
+            code: code || '----', 
+            price: price || 0, 
+            date: dateStr, 
+            opTag: opTag || 'ANY', 
+            smsText: fullText || 'Tidak ada pesan',
+            status: status 
+        });
     }
     TaskSmsBridge.saveHistory(JSON.stringify(hist));
 }
