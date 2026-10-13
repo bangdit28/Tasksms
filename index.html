@@ -60,7 +60,6 @@
     <!-- VIEW 1: BERANDA -->
     <div id="view_beranda" class="view-pane space-y-3.5">
         
-        <!-- TOP GREETING & NOTIFIKASI LONCENG -->
         <div class="flex items-center justify-between pt-1 pb-1">
             <div>
                 <h1 class="text-xl font-black text-white tracking-tight flex items-center gap-1">
@@ -74,7 +73,7 @@
             </div>
         </div>
 
-        <!-- BLUE STATS CARD (HOMEPAGE HEADER) -->
+        <!-- BLUE STATS CARD -->
         <div class="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 rounded-3xl p-5 text-white shadow-xl shadow-blue-500/15 cursor-pointer active:scale-[0.99] transition-transform select-none" onclick="switchBottomTab('dompet')">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3.5">
@@ -120,13 +119,14 @@
             </div>
         </div>
 
-        <!-- PILIHAN NEGARA -->
+        <!-- PILIHAN NEGARA (1 DROPDOWN TERPADU) -->
         <div class="glass-card p-3.5 relative">
             <div class="flex justify-between items-center mb-2 px-1">
                 <div class="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase"><span id="txtSelectCountryLabel">PILIH NEGARA</span> (<span id="totalCountriesTxt" class="text-cyan-400">1</span>)</div>
                 <span class="text-[10px] text-cyan-400 font-mono font-bold">VERIFIKASI FB</span>
             </div>
 
+            <!-- Trigger Dropdown Utama -->
             <div id="countryDropdownTrigger" onclick="toggleCountryDropdown()" class="w-full bg-[#0A101D] border border-slate-800 hover:border-cyan-500/50 rounded-xl p-3 flex items-center justify-between cursor-pointer transition-all active:scale-[0.99]">
                 <div class="flex items-center gap-2.5">
                     <span id="selDropdownFlag" class="flex items-center justify-center min-w-[28px]">
@@ -134,7 +134,6 @@
                     </span>
                     <div>
                         <div class="text-xs font-bold text-slate-200 tracking-wide" id="selDropdownTitle">Indonesia <span class="text-[10px] text-slate-400 font-mono">(+62)</span></div>
-                        <!-- NAMA VAK-SMS DISAMARKAN MENJADI SERVER PREMIUM -->
                         <div class="text-[10px] text-cyan-400 font-mono mt-0.5" id="selDropdownSub">Server Premium • Fast Active</div>
                     </div>
                 </div>
@@ -144,12 +143,14 @@
                 </div>
             </div>
 
+            <!-- Menu Dropdown Tunggal -->
             <div id="countryDropdownMenu" class="hidden mt-2 bg-[#0A101D] border border-cyan-500/30 rounded-2xl p-2.5 shadow-2xl transition-all">
                 <div class="relative mb-2">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
                     <input type="text" id="countrySearchInput" oninput="filterCountriesList()" placeholder="Cari negara atau dial (+)..." class="w-full bg-[#070B14] border border-slate-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-cyan-500 font-medium">
                 </div>
                 <div class="max-h-60 overflow-y-auto space-y-1.5 custom-scrollbar pr-1" id="dropdownItemsContainer">
+                    <!-- 1. Indonesia (Vak-SMS) -->
                     <div class="country-option active p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 flex items-center justify-between" id="card_ctry_id" onclick="selectCountryId()" data-filter="indonesia +62 id">
                         <div class="flex items-center gap-2.5">
                             <img src="https://flagcdn.com/h20/id.png" srcset="https://flagcdn.com/h40/id.png 2x, https://flagcdn.com/h60/id.png 3x" height="20" style="height:20px; width:auto; border-radius:3px;" alt="" onerror="this.onerror=null;this.src='https://flagcdn.com/h20/un.png';">
@@ -162,11 +163,15 @@
                             <div id="card_stock_id" class="text-[9px] font-mono text-emerald-400">Ready</div>
                         </div>
                     </div>
+                    <!-- 2. Dynamic Countries (StexSMS / Wealthora) -->
                     <div id="dynamicLiveCountries" class="space-y-1.5"></div>
+                    <!-- 3. Dynamic Countries (MK Network) -->
+                    <div id="dynamicMkCountries" class="space-y-1.5"></div>
                 </div>
             </div>
         </div>
 
+        <!-- OPERATOR SECTION -->
         <div id="operatorSection" class="glass-card p-3.5 border border-slate-800">
             <div class="flex justify-between items-center mb-2 px-1">
                 <div class="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase" id="txtOperatorTitle">OPERATOR INDONESIA</div>
@@ -175,6 +180,7 @@
             <div id="operatorGrid" class="flex flex-wrap gap-2 items-center"></div>
         </div>
 
+        <!-- BUY ACTION BAR -->
         <div id="buyActionBar" class="glass-card p-3.5 border border-cyan-500/30">
             <div class="flex justify-between items-center mb-3 text-xs font-mono">
                 <div>
@@ -210,7 +216,6 @@
                 Mark all read
             </button>
         </div>
-
         <div class="space-y-2.5 max-h-[75vh] overflow-y-auto custom-scrollbar pr-0.5" id="notificationsListContainer"></div>
     </div>
 
@@ -220,14 +225,12 @@
             <div class="text-center py-1">
                 <h2 class="text-base font-black text-white tracking-wide" id="txtOrdersHeaderTitle">Orders</h2>
             </div>
-
             <div class="flex bg-slate-900/90 p-1 rounded-2xl border border-slate-800 gap-1">
                 <button id="orderTabAll" onclick="filterOrdersTab('all')" class="flex-1 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white shadow">All</button>
                 <button id="orderTabActive" onclick="filterOrdersTab('active')" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white">Active</button>
                 <button id="orderTabCompleted" onclick="filterOrdersTab('completed')" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white">Completed</button>
                 <button id="orderTabCanceled" onclick="filterOrdersTab('canceled')" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white">Canceled</button>
             </div>
-
             <div id="ordersListContainer" class="space-y-2.5 max-h-[70vh] overflow-y-auto custom-scrollbar pr-0.5"></div>
         </div>
 
@@ -425,7 +428,7 @@
         <div class="space-y-2.5 max-h-[65vh] overflow-y-auto custom-scrollbar pr-0.5" id="transactionsFullList"></div>
     </div>
 
-    <!-- SUBVIEW: DEPOSIT (TERKUNCI - HUBUNGI ADMIN & RIWAYAT TRANSFER ASLI) -->
+    <!-- SUBVIEW: DEPOSIT -->
     <div id="subview_deposit" class="view-pane space-y-4" style="display: none;">
         <div class="flex items-center justify-between py-1">
             <button onclick="backToWalletMain()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center text-sm active:scale-90">
@@ -435,7 +438,6 @@
             <div class="w-9"></div>
         </div>
 
-        <!-- LOCKED CARD: HUBUNGI ADMIN -->
         <div class="bg-[#0B101D] border border-slate-800/80 rounded-3xl p-5 shadow-xl text-center space-y-3.5">
             <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center mx-auto text-2xl shadow-inner">
                 <i class="fa-solid fa-lock"></i>
@@ -447,7 +449,6 @@
                 </p>
             </div>
 
-            <!-- BUTTONS HUBUNGI ADMIN -->
             <div class="space-y-2 pt-1 text-left">
                 <div onclick="TaskSmsBridge.copyToClipboard('@TaskSmsSupport', 'Telegram Admin'); alert('Username Telegram Admin disalin: @TaskSmsSupport');" class="p-3 rounded-2xl border border-blue-500/30 bg-blue-600/10 flex items-center justify-between cursor-pointer active:scale-98 transition-all">
                     <div class="flex items-center gap-3">
@@ -477,7 +478,6 @@
             </div>
         </div>
 
-        <!-- RIWAYAT DEPOSIT (MURNI DARI TRANSFER ADMIN) -->
         <div class="space-y-2">
             <div class="text-xs font-bold text-slate-200 px-1 flex items-center justify-between">
                 <span id="txtHistDepTitle">History Deposit</span>
