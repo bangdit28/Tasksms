@@ -651,10 +651,6 @@ function checkMemberBalanceState() {
 }
 
 function toggleBalanceCurrency() {
-    if (!isAdminUser) {
-        alert(currentAppLang === 'en' ? 'Your balance format is Coins (1 Coin = IDR 1).' : 'Format saldo Anda adalah Koin Saldo (1 Koin = Rp 1).');
-        return;
-    }
     balanceCurrencyMode = (balanceCurrencyMode === 'USD') ? 'IDR' : 'USD';
     TaskSmsBridge.saveUserPref('balance_currency_mode', balanceCurrencyMode);
     
@@ -699,14 +695,24 @@ function updateAllBalanceUI(val) {
     } else {
         if (bTitle) bTitle.innerText = t('my_balance');
         let memberCoins = getMemberCoinBalance();
-        let coinStr = memberCoins.toLocaleString('id-ID');
+        let coinStr = memberCoins.toLocaleString('id-ID') + ' Koin';
+        let usdVal = (memberCoins / KURS_IDR).toFixed(3);
+        let usdStr = '$' + usdVal;
 
-        if (dompetBal) dompetBal.innerText = coinStr;
-        if (dompetSub) dompetSub.innerText = '~ Rp ' + coinStr;
-        if (profCoin) profCoin.innerText = coinStr;
-        if (homeBal) homeBal.innerText = coinStr;
+        if (balanceCurrencyMode === 'USD') {
+            if (dompetBal) dompetBal.innerText = usdStr;
+            if (dompetSub) dompetSub.innerText = '~ ' + coinStr + ' (Ketuk Kurs)';
+            if (profCoin) profCoin.innerText = usdStr;
+            if (homeBal) homeBal.innerText = usdStr;
+        } else {
+            if (dompetBal) dompetBal.innerText = coinStr;
+            if (dompetSub) dompetSub.innerText = '~ Rp ' + memberCoins.toLocaleString('id-ID');
+            if (profCoin) profCoin.innerText = coinStr;
+            if (homeBal) homeBal.innerText = coinStr;
+        }
     }
 }
+
 
 function onGetMasterBalanceResult(res) {
     try {
