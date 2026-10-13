@@ -1,13 +1,14 @@
 let authMode = 'login'; 
 let activeUser = ''; 
 let isAdminUser = false;
-let currentProvider = 'vak';
+let currentProvider = 'vak'; // 'vak', 'wealthora', atau 'mknetwork'
 let selectedCountryCode = 'id';
 let selectedCountryName = 'Indonesia';
 let selectedCountryIso = 'id';
 let selectedOperatorSlug = ''; 
 let selectedOperatorLabel = 'ANY';
 let liveCountryMap = {};
+let mkLiveMap = {}; // Penyimpan Range Negara MK Network di Background
 // HARGA INSTAN PATEN 0.009 USD
 let curPriceStr = '0.009'; 
 let curPriceNum = 0.009;
@@ -346,6 +347,9 @@ function getIsoByName(ctry) {
     if (!ctry) return 'un';
     let n = ctry.toLowerCase().trim();
     if (n.includes('indo')) return 'id';
+    if (n.includes('zambia')) return 'zm';
+    if (n.includes('myanmar')) return 'mm';
+    if (n.includes('sierra')) return 'sl';
     if (n.includes('ivory') || n.includes('gading') || n.includes('ivoire')) return 'ci';
     if (n.includes('ukrain')) return 'ua';
     if (n.includes('cameroon') || n.includes('kamerun')) return 'cm';
@@ -363,7 +367,6 @@ function getIsoByName(ctry) {
     if (n.includes('nigeria')) return 'ng';
     if (n.includes('kenya')) return 'ke';
     if (n.includes('uganda')) return 'ug';
-    if (n.includes('zambia')) return 'zm';
     if (n.includes('malawi')) return 'mw';
     if (n.includes('united kingdom') || n.includes('uk') || n.includes('inggris')) return 'gb';
     if (n.includes('usa') || n.includes('united states') || n.includes('amerika') || n.includes('canada')) return 'us';
@@ -622,7 +625,7 @@ function checkMemberBalanceState() {
     let btn = document.getElementById('btnBuy');
     if (!btn) return;
 
-    if (currentProvider === 'wealthora' || selectedCountryCode !== 'id') {
+    if (currentProvider === 'wealthora' || currentProvider === 'mknetwork' || selectedCountryCode !== 'id') {
         btn.disabled = false;
         btn.className = 'glow-btn w-full text-white font-black py-3 rounded-xl text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2';
         btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
@@ -712,7 +715,6 @@ function updateAllBalanceUI(val) {
         }
     }
 }
-
 
 function onGetMasterBalanceResult(res) {
     try {
@@ -813,7 +815,6 @@ function submitAdminTransferAction() {
     if (!target) return alert('Username member tujuan wajib diisi!');
     if (amtCoin <= 0) return alert('Nominal harus lebih dari 0!');
 
-    // Panggil Bridge Java untuk Transfer Langsung ke Firebase Realtime DB
     TaskSmsBridge.transferCoinsToMember(target, amtCoin, usdVal.toFixed(3));
 }
 
@@ -832,12 +833,6 @@ function getUserDepositHistory(u) {
     let raw = localStorage.getItem('dep_hist_' + userKey);
     if (!raw) return [];
     try { return JSON.parse(raw); } catch(e) { return []; }
-}
-
-function saveUserDepositHistory(u, list) {
-    let userKey = u || activeUser;
-    if (!userKey) return;
-    localStorage.setItem('dep_hist_' + userKey, JSON.stringify(list));
 }
 
 function renderDepositHistory() {
@@ -944,7 +939,7 @@ function buildUnifiedOrdersList() {
             id: to.id,
             service: to.svc || 'Facebook',
             country: to.ctry || 'Indonesia',
-            flag: (to.ctry && to.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : '🌐',
+            flag: (to.ctry && to.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : getFlagByName(to.ctry),
             carrier: to.opTag || 'ANY',
             phone: '+' + to.num,
             otp: to.otp || '----',
@@ -964,7 +959,7 @@ function buildUnifiedOrdersList() {
                 id: h.id || '-',
                 service: h.svc || 'Facebook',
                 country: h.ctry || 'Indonesia',
-                flag: (h.ctry && h.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : '🌐',
+                flag: (h.ctry && h.ctry.toLowerCase().includes('indo')) ? '🇮🇩' : getFlagByName(h.ctry),
                 carrier: h.opTag || 'ANY',
                 phone: '+' + h.num,
                 otp: h.code || '----',
@@ -1606,7 +1601,7 @@ setInterval(() => {
 }, 1000);
 
 // -------------------------------------------------------------
-// POLLING FAIL-SAFE & PENARIKAN SMS INBOX LENGKAP
+// POLLING FAIL-SAFE ENGINE (VAK, WEALTHORA, MK NETWORK)
 // -------------------------------------------------------------
 setInterval(() => {
     let orderKeys = Object.keys(taskOrders);
@@ -1614,12 +1609,26 @@ setInterval(() => {
         TaskSmsBridge.fetchWorkerData();
         
         let hasWealthOrder = false;
+        let mkPendingIds = [];
+
         for(let k in taskOrders) { 
             if(taskOrders[k].provider === 'wealthora') hasWealthOrder = true; 
+            
+            // CEK PESANAN MK NETWORK AKTIF
+            if(taskOrders[k].provider === 'mknetwork' && !taskOrders[k].otp) {
+                let numId = parseInt(k);
+                if (!isNaN(numId)) mkPendingIds.push(numId);
+            }
         }
+
         if (hasWealthOrder) {
             TaskSmsBridge.getWealthSuccessOtp();
             TaskSmsBridge.getWealthConsole();
+        }
+
+        // POLLING STATUS OTP MK NETWORK
+        if (mkPendingIds.length > 0) {
+            TaskSmsBridge.checkMkStatus(JSON.stringify(mkPendingIds));
         }
 
         if (activeIds.length > 0) {
@@ -1628,7 +1637,6 @@ setInterval(() => {
 
             let curOrd = taskOrders[currentPollingId];
             if (curOrd && curOrd.provider === 'vak') {
-                // DIPANGGIL SELALU AGAR SMS KE-2, 3, 4 TETAP DIPANTAU
                 TaskSmsBridge.getSmsCode(currentPollingId);
                 TaskSmsBridge.getVakSmsInbox(currentPollingId);
                 TaskSmsBridge.checkVakOrder(currentPollingId);
@@ -1636,6 +1644,13 @@ setInterval(() => {
         }
     }
 }, 2000);
+
+// SINKRONISASI RADAR MK NETWORK OTOMATIS DI BACKGROUND TIAP 10 DETIK
+setInterval(() => {
+    if (typeof TaskSmsBridge !== 'undefined' && TaskSmsBridge.getMkRadar) {
+        TaskSmsBridge.getMkRadar();
+    }
+}, 10000);
 
 function onWorkerDataResult(res) {
     try {
@@ -1658,7 +1673,7 @@ function onWorkerDataResult(res) {
     } catch(e) {}
 }
 
-// HANDLER VAK-SMS CLASSIC (PRESISI PER ORDER ID)
+// HANDLER VAK-SMS CLASSIC
 function onGetSmsCodeResult(idNum, res) {
     let id = idNum || currentPollingId; 
     let responseText = res;
@@ -1692,7 +1707,7 @@ function onGetSmsCodeResult(idNum, res) {
     } catch(e) {}
 }
 
-// HANDLER INBOX VAK-SMS (MENGITERASI SELURUH ARRAY INBOX)
+// HANDLER INBOX VAK-SMS
 function onVakInboxResult(id, base64Res) {
     if (!id || !base64Res) return;
     try {
@@ -1730,7 +1745,7 @@ function onVakInboxResult(id, base64Res) {
     } catch(e) {}
 }
 
-// HANDLER VAK-SMS TYPE 3 /user/check/{id}
+// HANDLER VAK-SMS TYPE 3
 function onVakCheckResult(id, base64Res) {
     if (!id || !base64Res) return;
     try {
@@ -1762,6 +1777,7 @@ function onVakCheckResult(id, base64Res) {
     } catch(e) {}
 }
 
+// HANDLER WEALTHORA
 function onWealthSuccessOtpResult(res) {
     try {
         let d = parseSafeResponse(res);
@@ -1793,7 +1809,162 @@ function onWealthSuccessOtpResult(res) {
 }
 
 // -------------------------------------------------------------
-// INJEKSI FULL TEXT INBOX (LOCKED TO LATEST)
+// ENGINE 3 HANDLER: MK NETWORK (RADAR, GET NUMBER, STATUS)
+// -------------------------------------------------------------
+function onMkRadarResult(base64Res) {
+    if (!base64Res) return;
+    try {
+        let jsonStr = decodeURIComponent(escape(atob(base64Res)));
+        let d = JSON.parse(jsonStr);
+
+        if (d && Array.isArray(d.items)) {
+            // Analisis & catat range aktif terbaik per negara (tanpa bocor ke UI)
+            d.items.forEach(item => {
+                let cName = (item.country || '').trim();
+                let cleanRange = (item.range || '').replace(/X/gi, '').trim();
+
+                if (cName && cleanRange && !mkLiveMap[cName]) {
+                    let info = detectCountryFromRange(cleanRange);
+                    mkLiveMap[cName] = {
+                        name: cName,
+                        code: info.code || '0',
+                        iso: info.iso || getIsoByName(cName),
+                        bestRange: item.range, // Disimpan senyap di background
+                        operator: item.operator || 'Live'
+                    };
+                }
+            });
+
+            renderMkCountriesDropdown();
+        }
+    } catch(e) {}
+}
+
+function renderMkCountriesDropdown() {
+    let container = document.getElementById('dynamicMkCountries');
+    if (!container) return;
+
+    let countryList = Object.values(mkLiveMap);
+    let html = '';
+
+    countryList.forEach(item => {
+        let isActive = (selectedCountryName === item.name && currentProvider === 'mknetwork') ? 'active' : '';
+        // Prefix Range disembunyikan total! Yang tampil hanya nama negara & dial code (+xxx)
+        html += `<div class="country-option ${isActive} p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 flex items-center justify-between" onclick="selectMkCountry('${item.name}')" data-filter="${item.name.toLowerCase()} +${item.code}">` +
+            `<div class="flex items-center gap-2.5">` +
+                getFlagImgHtml(item.iso, item.name, 20) +
+                `<div><div class="text-xs font-bold text-slate-200">${item.name} <span class="text-[10px] text-slate-400 font-mono">(+${item.code})</span></div></div>` +
+            `</div>` +
+            `<div class="text-right">` +
+                `<div class="text-xs font-black text-emerald-400"><i class="fa-solid fa-bolt"></i></div>` +
+                `<div class="text-[9px] font-mono text-cyan-400 font-medium">Ready</div>` +
+            `</div>` +
+        `</div>`;
+    });
+
+    container.innerHTML = html;
+    
+    // Perbarui jumlah total negara di dropdown
+    let totalCtry = 1 + Object.keys(liveCountryMap).length + countryList.length;
+    let tEl = document.getElementById('totalCountriesTxt');
+    if (tEl) tEl.innerText = totalCtry;
+}
+
+function selectMkCountry(countryName) {
+    let item = mkLiveMap[countryName];
+    if (!item) return;
+
+    selectedCountryCode = item.code;
+    selectedCountryName = item.name;
+    selectedCountryIso = item.iso;
+    currentProvider = 'mknetwork';
+
+    document.querySelectorAll('.country-option').forEach(c => c.classList.remove('active'));
+    closeCountryDropdown();
+
+    document.getElementById('selDropdownFlag').innerHTML = getFlagImgHtml(item.iso, item.name, 20);
+    document.getElementById('selDropdownTitle').innerHTML = `${item.name} <span class="text-[10px] text-slate-400 font-mono">(+${item.code})</span>`;
+    document.getElementById('selDropdownSub').innerText = 'Server Cloud • Live Active';
+    document.getElementById('selDropdownBadge').innerText = 'Ready';
+    document.getElementById('selDropdownBadge').className = 'text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded';
+
+    document.getElementById('operatorSection').style.display = 'none';
+    document.getElementById('selPriceLabelTxt').innerText = 'BIAYA ALOKASI';
+    document.getElementById('selProviderBadge').innerHTML = '<span class="text-emerald-400 font-black"><i class="fa-solid fa-bolt text-xs mr-1"></i>Auto Ready</span>';
+    document.getElementById('selTargetTxt').innerHTML = `${getFlagImgHtml(item.iso, item.name, 18)} <span>${item.name}</span> <span class="text-[10px] bg-slate-800 text-emerald-400 px-1.5 py-0.5 rounded border border-slate-700 uppercase font-mono">+${item.code}</span>`;
+    document.getElementById('selRealtimeStock').innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Sinyal Aktif</span>`;
+
+    checkMemberBalanceState();
+}
+
+function onMkGetNumResult(countryName, base64Res) {
+    let btn = document.getElementById('btnBuy');
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${t('btn_get_number')}`;
+
+    if (!base64Res) {
+        alert('Gagal mengambil nomor dari server MK Network. Silakan coba lagi.');
+        return;
+    }
+
+    try {
+        let jsonStr = decodeURIComponent(escape(atob(base64Res)));
+        let d = JSON.parse(jsonStr);
+
+        if (d && d.meta && d.meta.status === 'success' && d.data) {
+            let reqId = String(d.data.request_id);
+            let fullNum = String(d.data.full_number || d.data.number).replace(/[^0-9]/g, '');
+            let dateNow = new Date();
+            let timeStr = dateNow.getHours().toString().padStart(2, '0') + ':' + dateNow.getMinutes().toString().padStart(2, '0');
+
+            taskOrders[reqId] = {
+                id: reqId,
+                num: fullNum,
+                price: 0,
+                svc: 'Facebook',
+                ctry: countryName || d.data.country || 'Global',
+                opTag: d.data.operator || 'MK LIVE',
+                created: Date.now(),
+                timeStr: timeStr,
+                otp: null,
+                smsText: 'Menunggu SMS masuk dari server...',
+                provider: 'mknetwork',
+                smsCount: 0,
+                receivedOtps: []
+            };
+
+            persistOrders();
+            renderOrderCardUI(reqId, fullNum, 0, d.data.operator || 'MK LIVE', null, 'Menunggu SMS masuk dari server...', timeStr, true, 'mknetwork');
+            if (!activeIds.includes(reqId)) activeIds.push(reqId);
+            TaskSmsBridge.copyToClipboard('+' + fullNum, 'Nomor HP');
+        } else {
+            alert('Respon Server: ' + (d.message || 'Nomor tidak tersedia saat ini.'));
+        }
+    } catch(e) {
+        alert('Gagal memproses respon server.');
+    }
+}
+
+function onMkStatusResult(base64Res) {
+    if (!base64Res) return;
+    try {
+        let jsonStr = decodeURIComponent(escape(atob(base64Res)));
+        let d = JSON.parse(jsonStr);
+
+        if (d && d.data && Array.isArray(d.data.results)) {
+            d.data.results.forEach(res => {
+                let reqId = String(res.request_id);
+                if (res.status === 'success' && res.otp_code) {
+                    let fullText = res.full_sms || (res.otp_code + ' adalah kode konfirmasi akun Anda');
+                    applyReceivedSms(reqId, res.otp_code, fullText);
+                }
+            });
+        }
+    } catch(e) {}
+}
+
+// -------------------------------------------------------------
+// INJEKSI FULL TEXT INBOX
 // -------------------------------------------------------------
 function applyFullInboxMessage(id, code, fullText) {
     let ord = taskOrders[id]; if (!ord) return;
@@ -1826,7 +1997,7 @@ function applyFullInboxMessage(id, code, fullText) {
 }
 
 // -------------------------------------------------------------
-// LOGIKA UTAMA: TERIMA SMS (DIKUNCI AGAR TIDAK BOLAK-BALIK)
+// LOGIKA UTAMA: TERIMA SMS (OTP LOCK & NOTIFIKASI)
 // -------------------------------------------------------------
 function applyReceivedSms(id, code, fullText) {
     if (!code || code === 'null' || code === '----') return;
@@ -1852,7 +2023,6 @@ function applyReceivedSms(id, code, fullText) {
         return; 
     }
 
-    // TERIMA KODE BARU
     ord.receivedOtps.push(code);
     ord.smsCount = ord.receivedOtps.length;
     let isNextSms = ord.receivedOtps.length > 1;
@@ -1953,12 +2123,11 @@ function parseAndRenderLiveCountries(ranges) {
 
     let container = document.getElementById('dynamicLiveCountries');
     let codes = Object.keys(liveCountryMap);
-    document.getElementById('totalCountriesTxt').innerText = codes.length + 1;
     let html = '';
 
     codes.forEach(code => {
         let item = liveCountryMap[code];
-        let isActive = (selectedCountryCode === code) ? 'active' : '';
+        let isActive = (selectedCountryCode === code && currentProvider === 'wealthora') ? 'active' : '';
         html += `<div class="country-option ${isActive} p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 flex items-center justify-between" id="card_ctry_${code}" onclick="selectLiveCountry('${code}')" data-filter="${item.name.toLowerCase()} +${code} ${item.iso}">` +
             `<div class="flex items-center gap-2.5">` +
                 getFlagImgHtml(item.iso, item.name, 20) +
@@ -1971,6 +2140,10 @@ function parseAndRenderLiveCountries(ranges) {
         `</div>`;
     });
     container.innerHTML = html;
+
+    let totalCtry = 1 + codes.length + Object.keys(mkLiveMap).length;
+    let tEl = document.getElementById('totalCountriesTxt');
+    if (tEl) tEl.innerText = totalCtry;
 }
 
 function selectCountryId() {
@@ -2044,6 +2217,7 @@ function onServiceFbClick() {
     }
     queryRealtimeStockVak();
     TaskSmsBridge.getWealthLiveAccess();
+    if (TaskSmsBridge.getMkRadar) TaskSmsBridge.getMkRadar();
 }
 
 function renderOperatorButtons() {
@@ -2114,6 +2288,9 @@ function onGetCountNumberResult(res) {
     }
 }
 
+// -------------------------------------------------------------
+// EKSEKUSI PEMBELIAN NOMOR (VAK, WEALTHORA, MK NETWORK)
+// -------------------------------------------------------------
 function executeOrderNow() {
     if (currentProvider === 'vak') {
         let orderCostCoins = Math.max(161, Math.round(curPriceNum * KURS_IDR));
@@ -2124,6 +2301,17 @@ function executeOrderNow() {
 
     let btn = document.getElementById('btnBuy');
     btn.disabled = true;
+
+    // PROVIDER 3: MK NETWORK (AUTO-RANGE DARI RADAR BACKGROUND)
+    if (currentProvider === 'mknetwork') {
+        let item = mkLiveMap[selectedCountryName];
+        if (!item || !item.bestRange) return alert('Sinyal negara ini sedang diperbarui, silakan coba sesaat lagi.');
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Mengambil Nomor ${item.name}...`;
+        TaskSmsBridge.getMkNumber(item.bestRange, item.name);
+        return;
+    }
+
+    // PROVIDER 2: WEALTHORA / STEXSMS
     if (selectedCountryCode !== 'id') {
         let item = liveCountryMap[selectedCountryCode];
         if (!item || !item.ranges || item.ranges.length === 0) return alert('Pool negara ini belum siap.');
@@ -2131,6 +2319,7 @@ function executeOrderNow() {
         btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Mengambil Nomor ${item.name}...`;
         TaskSmsBridge.getWealthNum(bestRange);
     } else {
+        // PROVIDER 1: VAK-SMS INDONESIA
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Mengambil Nomor Indonesia...';
         TaskSmsBridge.getNumber('fb', 'id', selectedOperatorSlug, curPriceStr);
     }
@@ -2230,12 +2419,16 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
     let isVak = (prov === 'vak');
     let banBtnHtml = isVak ? `<button id="ban_btn_${id}" onclick="banOrder('${id}')" class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold py-2 rounded-xl active:scale-95 transition-all"><i class="fa-solid fa-ban mr-1"></i> Ban (Bekas)</button>` : '';
 
+    let tagLabel = 'VIP';
+    if (prov === 'wealthora') tagLabel = 'FREE';
+    if (prov === 'mknetwork') tagLabel = 'CLOUD';
+
     let html = `<div id="order_${id}" class="bg-[#0A101D] p-4 rounded-2xl mb-4 border border-slate-800 shadow-2xl relative">
         <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-2">
                 <span class="text-base font-black text-cyan-400 font-mono tracking-wider">#${id}</span>
                 <span id="badge_${id}" class="${badgeClass}">${badgeText}</span>
-                <span class="text-[8px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">${isVak ? 'VIP' : 'FREE'}</span>
+                <span class="text-[8px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">${tagLabel}</span>
             </div>
             <div class="flex items-center gap-2">
                 <span id="timer_${id}" class="text-[11px] font-mono text-slate-500"></span>
@@ -2441,6 +2634,7 @@ function uiLoginSuccess(username, isAdmin) {
     renderOperatorButtons();
     selectCountryId();
     TaskSmsBridge.getWealthLiveAccess();
+    if (TaskSmsBridge.getMkRadar) TaskSmsBridge.getMkRadar();
     TaskSmsBridge.startGlobalListener();
     restoreOrdersFromStorage();
     
