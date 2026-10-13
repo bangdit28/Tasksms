@@ -609,6 +609,15 @@ function deductMemberBalance(coinAmount) {
     checkMemberBalanceState();
 }
 
+function refundMemberBalance(coinAmount) {
+    if (isAdminUser) return;
+    let cur = getMemberCoinBalance();
+    let next = cur + coinAmount;
+    setMemberCoinBalance(activeUser, next);
+    updateAllBalanceUI(lastServerBalanceUsd);
+    checkMemberBalanceState();
+}
+
 function checkMemberBalanceState() {
     let btn = document.getElementById('btnBuy');
     if (!btn) return;
@@ -2267,8 +2276,15 @@ function renderOrderCardUI(id, num, priceVal, opTag, existingOtp, existingSmsTex
 
 function cancelOrder(id) {
     let ord = taskOrders[id];
-    if (ord && ord.provider === 'vak') {
-        TaskSmsBridge.cancelNumberVak(id);
+    if (ord) {
+        if (!isAdminUser && ord.provider === 'vak') {
+            let refundCoins = Math.max(161, Math.round((ord.price || curPriceNum) * KURS_IDR));
+            refundMemberBalance(refundCoins);
+            pushNewNotification('Order Cancelled & Refunded', 'Pesanan #' + id + ' dibatalkan. Koin +' + refundCoins.toLocaleString('id-ID') + ' telah dikembalikan.', id);
+        }
+        if (ord.provider === 'vak') {
+            TaskSmsBridge.cancelNumberVak(id);
+        }
     }
     delete taskOrders[id];
     persistOrders();
@@ -2289,6 +2305,14 @@ function banOrder(id) {
 }
 
 function onBanVakResult(id, res) {
+    let ord = taskOrders[id];
+    if (ord) {
+        if (!isAdminUser && ord.provider === 'vak') {
+            let refundCoins = Math.max(161, Math.round((ord.price || curPriceNum) * KURS_IDR));
+            refundMemberBalance(refundCoins);
+            pushNewNotification('Order Banned & Refunded', 'Nomor #' + id + ' diban. Koin +' + refundCoins.toLocaleString('id-ID') + ' telah dikembalikan.', id);
+        }
+    }
     delete taskOrders[id];
     persistOrders();
     activeIds = activeIds.filter(item => item !== id);
