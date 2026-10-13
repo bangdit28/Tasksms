@@ -24,6 +24,21 @@ let currentOpenedOrder = null;
 let currentAppLang = 'id'; // 'id' atau 'en'
 
 // -------------------------------------------------------------
+// SINKRONISASI FIREBASE REALTIME DENGAN APP WEB
+// -------------------------------------------------------------
+function onSyncUserDataFromFirebase(username, coins, depHistJson) {
+    localStorage.setItem('member_coins_' + username, coins);
+    localStorage.setItem('dep_hist_' + username, depHistJson);
+    
+    if (username === activeUser) {
+        updateAllBalanceUI(lastServerBalanceUsd);
+        renderHomeHeader();
+        checkMemberBalanceState();
+        renderDepositHistory();
+    }
+}
+
+// -------------------------------------------------------------
 // SISTEM MULTI-BAHASA (INDONESIA & ENGLISH)
 // -------------------------------------------------------------
 const LANG_PACK = {
@@ -581,6 +596,7 @@ function setMemberCoinBalance(user, amount) {
     localStorage.setItem('member_coins_' + u, amount);
     if (u === activeUser) {
         TaskSmsBridge.saveUserPref('my_coins', String(amount));
+        TaskSmsBridge.updateMemberCoinsFirebase(u, amount);
     }
 }
 
@@ -782,27 +798,14 @@ function submitAdminTransferAction() {
     if (!target) return alert('Username member tujuan wajib diisi!');
     if (amtCoin <= 0) return alert('Nominal harus lebih dari 0!');
 
-    let curBal = getMemberCoinBalance(target);
-    let nextBal = curBal + amtCoin;
-    setMemberCoinBalance(target, nextBal);
+    // Panggil Bridge Java untuk Transfer Langsung ke Firebase Realtime DB
+    TaskSmsBridge.transferCoinsToMember(target, amtCoin, usdVal.toFixed(3));
+}
 
-    let targetDepHist = getUserDepositHistory(target);
-    let dateObj = new Date();
-    let dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
-                  dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    let codeHash = 'TRF-' + Math.random().toString(36).substring(2, 7).toUpperCase();
-
-    targetDepHist.unshift({
-        method: 'TRANSFER ADMIN ($' + usdVal.toFixed(3) + ')',
-        code: codeHash,
-        date: dateStr,
-        amount: amtCoin
-    });
-    saveUserDepositHistory(target, targetDepHist);
-
-    TaskSmsBridge.pushGlobalLog('Deposit', 'ID', '+' + amtCoin.toLocaleString('id-ID') + ' Koin -> ' + target, 'ADMIN');
+function onTransferSuccess(targetUser, addedCoins) {
+    TaskSmsBridge.pushGlobalLog('Deposit', 'ID', '+' + addedCoins.toLocaleString('id-ID') + ' Koin -> ' + targetUser, 'ADMIN');
     closeProfModal();
-    alert('Sukses! Berhasil transfer $' + usdVal.toFixed(3) + ' (Rp ' + amtCoin.toLocaleString('id-ID') + ') ke member: ' + target);
+    alert('Sukses! Berhasil transfer ' + addedCoins.toLocaleString('id-ID') + ' Koin ke member: ' + targetUser);
 }
 
 // -------------------------------------------------------------
